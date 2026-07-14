@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>登录</title>
+  <link rel="stylesheet" href="css/style.css?v=20260709-utf8fix">
+  <style>
+    .login-page {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      background: linear-gradient(180deg, #f8fafc 0%, #eef2ff 40%, #e0e7ff 100%);
+    }
+    .login-hero {
+      padding: 48px 24px 32px;
+      text-align: center;
+    }
+    .login-hero .logo {
+      width: 72px;
+      height: 72px;
+      border-radius: 20px;
+      background: linear-gradient(135deg, var(--primary), #8b5cf6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 36px;
+      margin: 0 auto 20px;
+      box-shadow: 0 8px 24px rgba(99,102,241,0.3);
+    }
+    .login-hero h1 {
+      font-size: 24px;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      margin-bottom: 6px;
+    }
+    .login-hero p {
+      font-size: 14px;
+      color: var(--text-secondary);
+    }
+    .login-form {
+      flex: 1;
+      padding: 0 24px 24px;
+    }
+    .login-card {
+      background: var(--card-bg);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 24px;
+    }
+    .phone-input-wrap {
+      display: flex;
+      align-items: center;
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      overflow: hidden;
+      transition: border-color 0.2s;
+    }
+    .phone-input-wrap:focus-within {
+      border-color: var(--primary);
+    }
+    .phone-prefix {
+      padding: 14px 12px;
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text);
+      border-right: 1px solid var(--border);
+      background: var(--border-light);
+      flex-shrink: 0;
+    }
+    .phone-input-wrap input {
+      border: none;
+      flex: 1;
+      padding: 14px 16px;
+      font-size: 16px;
+      font-weight: 500;
+      letter-spacing: 0.5px;
+      outline: none;
+    }
+    .phone-input-wrap input::placeholder {
+      color: var(--text-tertiary);
+    }
+    .code-row {
+      display: flex;
+      gap: 12px;
+    }
+    .code-row input {
+      flex: 1;
+      padding: 14px 16px;
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      font-size: 16px;
+      font-weight: 500;
+      letter-spacing: 4px;
+      text-align: center;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .code-row input:focus {
+      border-color: var(--primary);
+    }
+    .code-btn {
+      padding: 14px 16px;
+      border-radius: var(--radius-sm);
+      border: none;
+      background: var(--primary);
+      color: white;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.2s;
+      min-width: 110px;
+    }
+    .code-btn:disabled {
+      background: var(--border);
+      color: var(--text-tertiary);
+      cursor: not-allowed;
+    }
+    .code-btn:active:not(:disabled) {
+      transform: scale(0.97);
+      background: #4f46e5;
+    }
+    .login-btn {
+      width: 100%;
+      margin-top: 8px;
+    }
+    .login-btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+    .login-tips {
+      text-align: center;
+      font-size: 12px;
+      color: var(--text-tertiary);
+      margin-top: 16px;
+      line-height: 1.6;
+    }
+    .error-msg {
+      font-size: 13px;
+      color: var(--danger);
+      margin-top: 6px;
+      display: none;
+    }
+    .error-msg.show {
+      display: block;
+    }
+  </style>
+</head>
+<body class="login-page">
+  <div class="login-hero">
+    <div class="logo">🧘</div>
+    <h1>AI 体态恢复</h1>
+    <p>智能评估 · 定制训练 · 体态矫正</p>
+  </div>
+
+  <div class="login-form">
+    <div class="login-card">
+      <div class="form-group">
+        <label class="form-label">手机号码</label>
+        <div class="phone-input-wrap">
+          <span class="phone-prefix">+86</span>
+          <input type="tel" id="phone" placeholder="请输入手机号" maxlength="11" inputmode="numeric">
+        </div>
+        <div class="error-msg" id="phone-error">请输入正确的11位手机号</div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">验证码</label>
+        <div class="code-row">
+          <input type="tel" id="code" placeholder="请输入验证码" maxlength="6" inputmode="numeric">
+          <button class="code-btn" id="code-btn" onclick="sendCode()">获取验证码</button>
+        </div>
+        <div class="error-msg" id="code-error">验证码错误</div>
+      </div>
+
+      <button class="btn btn-primary login-btn" id="login-btn" onclick="doLogin()">登录</button>
+
+      <p class="login-tips">
+        未注册手机号验证后将自动创建账号<br>
+        登录即代表同意《用户协议》和《隐私政策》
+      </p>
+    </div>
+  </div>
+
+  <script>
+    let pendingLoginCode = '';
+    let pendingLoginCodeExpiresAt = 0;
+    let countdownTimer = null;
+
+    function isValidPhone(phone) {
+      return /^1[3-9]\d{9}$/.test(phone);
+    }
+
+    function sendCode() {
+      const phone = document.getElementById('phone').value.trim();
+      const phoneError = document.getElementById('phone-error');
+
+      if (!isValidPhone(phone)) {
+        phoneError.classList.add('show');
+        return;
+      }
+      phoneError.classList.remove('show');
+      pendingLoginCode = generateLoginCode();
+      pendingLoginCodeExpiresAt = Date.now() + 5 * 60 * 1000;
+      sessionStorage.setItem('ai_posture_login_code_' + phone, JSON.stringify({
+        code: pendingLoginCode,
+        expiresAt: pendingLoginCodeExpiresAt
+      }));
+
+      // 开始倒计时
+      const btn = document.getElementById('code-btn');
+      let seconds = 60;
+      btn.disabled = true;
+      btn.textContent = `${seconds}s`;
+
+      countdownTimer = setInterval(() => {
+        seconds--;
+        if (seconds <= 0) {
+          clearInterval(countdownTimer);
+          btn.disabled = false;
+          btn.textContent = '获取验证码';
+        } else {
+          btn.textContent = `${seconds}s`;
+        }
+      }, 1000);
+
+      setTimeout(() => {
+        document.getElementById('code').value = pendingLoginCode;
+      }, 500);
+    }
+
+    function generateLoginCode() {
+      const bytes = new Uint32Array(1);
+      if (window.crypto && window.crypto.getRandomValues) {
+        window.crypto.getRandomValues(bytes);
+      } else {
+        bytes[0] = Date.now();
+      }
+      return String(100000 + (bytes[0] % 900000));
+    }
+
+    function getStoredLoginCode(phone) {
+      try {
+        const payload = JSON.parse(sessionStorage.getItem('ai_posture_login_code_' + phone) || '{}');
+        if (!payload.code || Date.now() > Number(payload.expiresAt || 0)) return '';
+        return String(payload.code);
+      } catch (err) {
+        return '';
+      }
+    }
+
+    function doLogin() {
+      const phone = document.getElementById('phone').value.trim();
+      const code = document.getElementById('code').value.trim();
+      const phoneError = document.getElementById('phone-error');
+      const codeError = document.getElementById('code-error');
+
+      if (!isValidPhone(phone)) {
+        phoneError.classList.add('show');
+        return;
+      }
+      phoneError.classList.remove('show');
+
+      if (code !== getStoredLoginCode(phone)) {
+        codeError.classList.add('show');
+        return;
+      }
+      codeError.classList.remove('show');
+
+      // 保存登录状态
+      const user = {
+        phone: phone,
+        isLoggedIn: true,
+        loginAt: new Date().toISOString()
+      };
+      localStorage.setItem('ai_posture_user', JSON.stringify(user));
+
+      // 保存用户到用户列表（供后台管理面板查看）
+      var users = JSON.parse(localStorage.getItem('ai_posture_users') || '[]');
+      var exists = users.find(u => u.phone === phone);
+      if (!exists) {
+        users.push({
+          phone: phone,
+          registeredAt: new Date().toISOString(),
+          lastLoginAt: new Date().toISOString(),
+          disabled: false
+        });
+      } else {
+        exists.lastLoginAt = new Date().toISOString();
+      }
+      localStorage.setItem('ai_posture_users', JSON.stringify(users));
+
+      // 跳转到首页
+      window.location.href = 'index.html';
+    }
+
+    // 输入时实时验证
+    document.getElementById('phone').addEventListener('input', function() {
+      this.value = this.value.replace(/\D/g, '').slice(0, 11);
+      document.getElementById('phone-error').classList.remove('show');
+    });
+
+    document.getElementById('code').addEventListener('input', function() {
+      this.value = this.value.replace(/\D/g, '').slice(0, 4);
+      document.getElementById('code-error').classList.remove('show');
+    });
+
+    // 回车登录
+    document.getElementById('code').addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') doLogin();
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,3097 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI体态恢复 - 后台管理</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Noto+Sans+SC:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    /* ===== CSS 变量 ===== */
+    :root {
+      --bg-primary: #0a0a0f;
+      --bg-secondary: #0e0e16;
+      --bg-card: #12121c;
+      --bg-hover: #181825;
+      --bg-active: #1e1e30;
+      --border-color: #1e1e2e;
+      --border-light: #2a2a3e;
+      --text-primary: #e4e4ec;
+      --text-secondary: #8888a0;
+      --text-tertiary: #55556a;
+      --accent: #38bdf8;
+      --accent-dim: rgba(56, 189, 248, 0.12);
+      --accent-hover: #5cc8fa;
+      --success: #34d399;
+      --success-dim: rgba(52, 211, 153, 0.12);
+      --danger: #f87171;
+      --danger-dim: rgba(248, 113, 113, 0.12);
+      --warning: #fbbf24;
+      --warning-dim: rgba(251, 191, 36, 0.12);
+      --mono: 'JetBrains Mono', monospace;
+      --sans: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+      --sidebar-width: 220px;
+    }
+
+    /* ===== 基础重置 ===== */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { font-size: 14px; }
+    body {
+      font-family: var(--sans);
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg-secondary); }
+    ::-webkit-scrollbar-thumb { background: var(--border-light); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--text-tertiary); }
+    input, button, select { font-family: inherit; }
+
+    /* ===== 登录页 ===== */
+    .login-overlay {
+      position: fixed; inset: 0;
+      background: var(--bg-primary);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 9999;
+      flex-direction: column;
+      gap: 24px;
+    }
+    .login-overlay.hidden { display: none; }
+    .login-logo {
+      width: 64px; height: 64px;
+      border-radius: 16px;
+      background: linear-gradient(135deg, var(--accent), #818cf8);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 32px;
+      box-shadow: 0 8px 32px rgba(56, 189, 248, 0.25);
+      animation: loginPulse 2s ease-in-out infinite;
+    }
+    @keyframes loginPulse {
+      0%, 100% { box-shadow: 0 8px 32px rgba(56, 189, 248, 0.25); }
+      50% { box-shadow: 0 8px 48px rgba(56, 189, 248, 0.4); }
+    }
+    .login-title {
+      font-size: 20px; font-weight: 700; color: var(--text-primary);
+      letter-spacing: -0.02em;
+    }
+    .login-subtitle {
+      font-size: 13px; color: var(--text-tertiary); margin-top: -16px;
+    }
+    .login-box {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 28px;
+      width: 360px;
+      animation: loginSlideUp 0.5s ease;
+    }
+    @keyframes loginSlideUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .login-field {
+      margin-bottom: 16px;
+    }
+    .login-field label {
+      display: block;
+      font-size: 12px; font-weight: 600;
+      color: var(--text-secondary);
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .login-field input {
+      width: 100%;
+      padding: 12px 14px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      color: var(--text-primary);
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .login-field input:focus {
+      border-color: var(--accent);
+    }
+    .login-field input::placeholder {
+      color: var(--text-tertiary);
+    }
+    .login-error {
+      font-size: 12px; color: var(--danger);
+      margin-top: 8px; display: none;
+    }
+    .login-error.show { display: block; }
+    .login-btn {
+      width: 100%;
+      padding: 12px;
+      background: var(--accent);
+      color: #0a0a0f;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .login-btn:hover { background: var(--accent-hover); }
+    .login-btn:active { transform: scale(0.98); }
+
+    /* ===== 布局：侧边栏 + 内容区 ===== */
+    .app-layout {
+      display: flex;
+      min-height: 100vh;
+    }
+    .app-layout.hidden { display: none; }
+
+    /* ===== 侧边栏 ===== */
+    .sidebar {
+      width: var(--sidebar-width);
+      background: var(--bg-secondary);
+      border-right: 1px solid var(--border-color);
+      position: fixed;
+      top: 0; left: 0; bottom: 0;
+      display: flex;
+      flex-direction: column;
+      z-index: 100;
+    }
+    .sidebar-brand {
+      padding: 20px 16px;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .sidebar-brand-icon {
+      width: 36px; height: 36px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, var(--accent), #818cf8);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+    .sidebar-brand-text {
+      font-size: 15px; font-weight: 700;
+      color: var(--text-primary);
+      letter-spacing: -0.01em;
+    }
+    .sidebar-brand-sub {
+      font-size: 10px;
+      color: var(--text-tertiary);
+      font-weight: 500;
+    }
+    .sidebar-nav {
+      flex: 1;
+      padding: 12px 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.15s;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      border: 1px solid transparent;
+    }
+    .nav-item:hover {
+      background: var(--bg-hover);
+      color: var(--text-primary);
+    }
+    .nav-item.active {
+      background: var(--accent-dim);
+      color: var(--accent);
+      border-color: rgba(56, 189, 248, 0.2);
+    }
+    .nav-item-icon {
+      width: 20px;
+      text-align: center;
+      font-size: 15px;
+      flex-shrink: 0;
+    }
+    .nav-footer {
+      padding: 12px 8px;
+      border-top: 1px solid var(--border-color);
+    }
+
+    /* ===== 主内容区 ===== */
+    .main-content {
+      flex: 1;
+      margin-left: var(--sidebar-width);
+      padding: 24px 28px;
+      min-height: 100vh;
+    }
+    .content-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 24px;
+    }
+    .content-title {
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+    .content-title-sub {
+      font-size: 12px;
+      color: var(--text-tertiary);
+      margin-top: 2px;
+    }
+    .content-actions {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    /* ===== 模块面板 ===== */
+    .panel { display: none; }
+    .panel.active { display: block; animation: panelFadeIn 0.35s ease; }
+    @keyframes panelFadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ===== Dashboard 统计卡片 ===== */
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+    .stat-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 20px;
+      animation: statSlideIn 0.5s ease backwards;
+    }
+    .stat-card:nth-child(1) { animation-delay: 0.05s; }
+    .stat-card:nth-child(2) { animation-delay: 0.1s; }
+    .stat-card:nth-child(3) { animation-delay: 0.15s; }
+    .stat-card:nth-child(4) { animation-delay: 0.2s; }
+    @keyframes statSlideIn {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .stat-label {
+      font-size: 12px;
+      color: var(--text-tertiary);
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-bottom: 8px;
+    }
+    .stat-value {
+      font-family: var(--mono);
+      font-size: 32px;
+      font-weight: 700;
+      line-height: 1;
+      margin-bottom: 4px;
+    }
+    .stat-value.accent { color: var(--accent); }
+    .stat-value.success { color: var(--success); }
+    .stat-value.warning { color: var(--warning); }
+    .stat-value.danger { color: var(--danger); }
+    .stat-change {
+      font-size: 11px;
+      color: var(--text-tertiary);
+      font-family: var(--mono);
+    }
+
+    /* ===== Dashboard 趋势区域 ===== */
+    .trend-section {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+    .trend-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 20px;
+      animation: statSlideIn 0.5s ease backwards;
+      animation-delay: 0.25s;
+    }
+    .trend-card h3 {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      margin-bottom: 16px;
+    }
+    .trend-bar-group {
+      display: flex;
+      align-items: flex-end;
+      gap: 4px;
+      height: 80px;
+    }
+    .trend-bar {
+      flex: 1;
+      background: var(--accent-dim);
+      border-radius: 3px 3px 0 0;
+      min-height: 4px;
+      transition: height 0.6s ease;
+      position: relative;
+    }
+    .trend-bar::after {
+      content: attr(data-val);
+      position: absolute;
+      bottom: -16px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 9px;
+      color: var(--text-tertiary);
+      font-family: var(--mono);
+    }
+    .trend-bar.active { background: var(--accent); }
+    .trend-bar-labels {
+      display: flex;
+      gap: 4px;
+      margin-top: 20px;
+    }
+    .trend-bar-labels span {
+      flex: 1;
+      text-align: center;
+      font-size: 9px;
+      color: var(--text-tertiary);
+    }
+    .trend-summary {
+      margin-top: 28px;
+      padding-top: 12px;
+      border-top: 1px solid var(--border-color);
+      display: flex;
+      justify-content: space-between;
+    }
+    .trend-summary-item {
+      text-align: center;
+    }
+    .trend-summary-item .num {
+      font-family: var(--mono);
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+    .trend-summary-item .label {
+      font-size: 11px;
+      color: var(--text-tertiary);
+      margin-top: 2px;
+    }
+
+    /* ===== 搜索/筛选栏 ===== */
+    .toolbar {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 16px;
+      align-items: center;
+    }
+    .search-input {
+      flex: 1;
+      max-width: 320px;
+      padding: 9px 14px;
+      padding-left: 34px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      color: var(--text-primary);
+      font-size: 13px;
+      outline: none;
+      transition: border-color 0.2s;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' fill='%2355556a' viewBox='0 0 16 16'%3E%3Cpath d='M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85zm-5.242.156a5 5 0 1 1 0-10 5 5 0 0 1 0 10z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: 12px center;
+    }
+    .search-input:focus { border-color: var(--accent); }
+    .search-input::placeholder { color: var(--text-tertiary); }
+
+    .filter-select {
+      padding: 9px 14px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      color: var(--text-primary);
+      font-size: 13px;
+      outline: none;
+      cursor: pointer;
+    }
+    .filter-select:focus { border-color: var(--accent); }
+
+    /* ===== 数据表格 ===== */
+    .data-table-wrap {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .data-table thead {
+      background: var(--bg-secondary);
+    }
+    .data-table th {
+      padding: 12px 16px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-tertiary);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      text-align: left;
+      border-bottom: 1px solid var(--border-color);
+      white-space: nowrap;
+    }
+    .data-table td {
+      padding: 12px 16px;
+      font-size: 13px;
+      color: var(--text-secondary);
+      border-bottom: 1px solid var(--border-color);
+      vertical-align: middle;
+    }
+    .data-table tbody tr {
+      transition: background 0.1s;
+    }
+    .data-table tbody tr:hover {
+      background: var(--bg-hover);
+    }
+    .data-table tbody tr:last-child td {
+      border-bottom: none;
+    }
+    .data-table .mono {
+      font-family: var(--mono);
+      color: var(--text-primary);
+      font-weight: 600;
+    }
+
+    /* ===== 状态标签 ===== */
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      padding: 3px 10px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      gap: 4px;
+    }
+    .tag-success { background: var(--success-dim); color: var(--success); }
+    .tag-danger { background: var(--danger-dim); color: var(--danger); }
+    .tag-warning { background: var(--warning-dim); color: var(--warning); }
+    .tag-accent { background: var(--accent-dim); color: var(--accent); }
+    .tag-default { background: var(--bg-hover); color: var(--text-tertiary); }
+
+    /* ===== 操作按钮 ===== */
+    .btn-sm {
+      padding: 5px 12px;
+      border-radius: 6px;
+      border: 1px solid var(--border-color);
+      background: transparent;
+      color: var(--text-secondary);
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .btn-sm:hover {
+      background: var(--bg-hover);
+      color: var(--text-primary);
+      border-color: var(--border-light);
+    }
+    .btn-sm.primary {
+      background: var(--accent-dim);
+      color: var(--accent);
+      border-color: rgba(56, 189, 248, 0.2);
+    }
+    .btn-sm.primary:hover {
+      background: rgba(56, 189, 248, 0.2);
+    }
+    .btn-sm.danger {
+      background: var(--danger-dim);
+      color: var(--danger);
+      border-color: rgba(248, 113, 113, 0.2);
+    }
+    .btn-sm.danger:hover {
+      background: rgba(248, 113, 113, 0.2);
+    }
+    .btn-sm.success {
+      background: var(--success-dim);
+      color: var(--success);
+      border-color: rgba(52, 211, 153, 0.2);
+    }
+
+    /* ===== 展开详情面板 ===== */
+    .detail-row td {
+      padding: 0 !important;
+      border-bottom: 1px solid var(--border-color) !important;
+    }
+    .detail-panel {
+      background: var(--bg-secondary);
+      padding: 20px 24px;
+      display: none;
+      animation: detailSlide 0.25s ease;
+    }
+    .detail-panel.show { display: block; }
+    @keyframes detailSlide {
+      from { opacity: 0; max-height: 0; }
+      to { opacity: 1; max-height: 500px; }
+    }
+    .detail-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+    }
+    .detail-item {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .detail-item-label {
+      font-size: 11px;
+      color: var(--text-tertiary);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .detail-item-value {
+      font-size: 13px;
+      color: var(--text-primary);
+      font-weight: 500;
+    }
+    .detail-item-value.mono {
+      font-family: var(--mono);
+    }
+    .detail-section-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--accent);
+      margin: 16px 0 10px;
+      padding-top: 12px;
+      border-top: 1px solid var(--border-color);
+    }
+    .detail-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 4px;
+    }
+    .detail-tag {
+      padding: 4px 10px;
+      background: var(--danger-dim);
+      color: var(--danger);
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .detail-tag.good {
+      background: var(--success-dim);
+      color: var(--success);
+    }
+    .detail-text {
+      font-size: 13px;
+      color: var(--text-secondary);
+      line-height: 1.7;
+      white-space: pre-wrap;
+      max-height: 120px;
+      overflow-y: auto;
+    }
+
+    /* ===== 报告评分环 ===== */
+    .report-score-ring {
+      width: 80px; height: 80px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      position: relative;
+      flex-shrink: 0;
+    }
+    .report-score-ring svg {
+      position: absolute; inset: 0;
+      transform: rotate(-90deg);
+    }
+    .report-score-ring circle {
+      fill: none;
+      stroke-width: 5;
+    }
+    .report-score-ring .ring-bg { stroke: var(--border-color); }
+    .report-score-ring .ring-fill {
+      stroke: var(--accent);
+      stroke-linecap: round;
+      transition: stroke-dashoffset 0.8s ease;
+    }
+    .report-score-num {
+      font-family: var(--mono);
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--text-primary);
+      z-index: 1;
+    }
+
+    /* ===== 打卡记录时间线 ===== */
+    .checkin-timeline {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+      gap: 6px;
+      margin-top: 10px;
+    }
+    .checkin-day {
+      text-align: center;
+      padding: 6px 2px;
+      border-radius: 6px;
+      font-size: 11px;
+    }
+    .checkin-day .day-num {
+      font-family: var(--mono);
+      font-weight: 700;
+      font-size: 13px;
+      display: block;
+      margin-bottom: 2px;
+    }
+    .checkin-day.checked {
+      background: var(--success-dim);
+      color: var(--success);
+    }
+    .checkin-day.missed {
+      background: var(--danger-dim);
+      color: var(--danger);
+    }
+    .checkin-day.leave {
+      background: var(--warning-dim);
+      color: var(--warning);
+    }
+    .checkin-day.pending {
+      background: var(--bg-hover);
+      color: var(--text-tertiary);
+    }
+    .checkin-day.future {
+      background: transparent;
+      color: var(--text-tertiary);
+      opacity: 0.4;
+    }
+
+    /* ===== 空状态 ===== */
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--text-tertiary);
+    }
+    .empty-state-icon {
+      font-size: 48px;
+      margin-bottom: 12px;
+      opacity: 0.5;
+    }
+    .empty-state-text {
+      font-size: 14px;
+      font-weight: 500;
+    }
+    .empty-state-sub {
+      font-size: 12px;
+      margin-top: 4px;
+    }
+
+    /* ===== 退出按钮 ===== */
+    .logout-btn {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.15s;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--danger);
+      background: none;
+      border: none;
+      width: 100%;
+      text-align: left;
+    }
+    .logout-btn:hover {
+      background: var(--danger-dim);
+    }
+
+    /* ===== 加载动画 ===== */
+    @keyframes staggerFadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ===== 响应式 ===== */
+    @media (max-width: 1200px) {
+      .stat-grid { grid-template-columns: repeat(2, 1fr); }
+      .trend-section { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 768px) {
+      .sidebar { display: none; }
+      .main-content { margin-left: 0; padding: 16px; }
+      .stat-grid { grid-template-columns: 1fr 1fr; }
+      .detail-grid { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ===== 登录覆盖层 ===== -->
+  <div class="login-overlay" id="loginOverlay">
+    <div class="login-logo">M</div>
+    <div class="login-title">AI体态恢复 - 管理后台</div>
+    <div class="login-subtitle">Industrial Utilitarian Control Panel</div>
+    <div class="login-box">
+      <div class="login-field">
+        <label>管理员密码</label>
+        <input type="password" id="adminPassword" placeholder="请输入管理员密码" autocomplete="off">
+      </div>
+      <div class="login-error" id="loginError">密码错误，请重试</div>
+      <button class="login-btn" id="loginBtn">登录系统</button>
+    </div>
+  </div>
+
+  <!-- ===== 应用布局 ===== -->
+  <div class="app-layout hidden" id="appLayout">
+    <!-- 侧边栏 -->
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <div class="sidebar-brand-icon">M</div>
+        <div>
+          <div class="sidebar-brand-text">AI体态恢复</div>
+          <div class="sidebar-brand-sub">ADMIN PANEL</div>
+        </div>
+      </div>
+      <nav class="sidebar-nav">
+        <div class="nav-item active" data-panel="dashboard" onclick="switchPanel('dashboard')">
+          <span class="nav-item-icon">&#9632;</span>
+          <span>数据总览</span>
+        </div>
+        <div class="nav-item" data-panel="users" onclick="switchPanel('users')">
+          <span class="nav-item-icon">&#9786;</span>
+          <span>顾客管理</span>
+        </div>
+        <div class="nav-item" data-panel="reports" onclick="switchPanel('reports')">
+          <span class="nav-item-icon">&#9776;</span>
+          <span>评估报告</span>
+        </div>
+        <div class="nav-item" data-panel="challenges" onclick="switchPanel('challenges')">
+          <span class="nav-item-icon">&#9883;</span>
+          <span>训练挑战</span>
+        </div>
+      </nav>
+      <div class="nav-footer">
+        <button class="logout-btn" onclick="doLogout()">
+          <span class="nav-item-icon">&#9211;</span>
+          <span>退出登录</span>
+        </button>
+      </div>
+    </aside>
+
+    <!-- 主内容区 -->
+    <main class="main-content">
+
+      <!-- ===== 面板1：数据总览 Dashboard ===== -->
+      <div class="panel active" id="panel-dashboard">
+        <div class="content-header">
+          <div>
+            <div class="content-title">数据总览</div>
+            <div class="content-title-sub">实时数据概览与趋势分析</div>
+          </div>
+          <div class="content-actions">
+            <button class="btn-sm primary" onclick="refreshAllData()">刷新数据</button>
+          </div>
+        </div>
+
+        <!-- 统计卡片 -->
+        <div class="stat-grid" id="statGrid">
+          <div class="stat-card">
+            <div class="stat-label">总用户数</div>
+            <div class="stat-value accent" id="statTotalUsers">0</div>
+            <div class="stat-change" id="statTotalUsersChange">--</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">今日新增</div>
+            <div class="stat-value success" id="statTodayNew">0</div>
+            <div class="stat-change" id="statTodayNewChange">--</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">活跃挑战数</div>
+            <div class="stat-value warning" id="statActiveChallenges">0</div>
+            <div class="stat-change" id="statActiveChallengesChange">--</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">平均评分</div>
+            <div class="stat-value danger" id="statAvgScore">--</div>
+            <div class="stat-change" id="statAvgScoreChange">--</div>
+          </div>
+        </div>
+
+        <!-- 趋势区域 -->
+        <div class="trend-section">
+          <div class="trend-card">
+            <h3>近7日新增用户</h3>
+            <div class="trend-bar-group" id="trendUsersBar"></div>
+            <div class="trend-bar-labels" id="trendUsersLabels"></div>
+          </div>
+          <div class="trend-card">
+            <h3>近7日评估报告</h3>
+            <div class="trend-bar-group" id="trendReportsBar"></div>
+            <div class="trend-bar-labels" id="trendReportsLabels"></div>
+          </div>
+        </div>
+
+        <!-- 汇总统计 -->
+        <div class="trend-card" style="animation-delay: 0.3s;">
+          <h3>汇总统计</h3>
+          <div class="trend-summary" id="trendSummary">
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== 面板2：顾客管理 ===== -->
+      <div class="panel" id="panel-users">
+        <div class="content-header">
+          <div>
+            <div class="content-title">顾客管理</div>
+            <div class="content-title-sub">管理注册顾客账号信息</div>
+          </div>
+        </div>
+
+        <div class="toolbar">
+          <input type="text" class="search-input" id="userSearch" placeholder="搜索手机号..." oninput="filterUsers()">
+          <select class="filter-select" id="userStatusFilter" onchange="filterUsers()">
+            <option value="all">全部状态</option>
+            <option value="active">正常</option>
+            <option value="disabled">已禁用</option>
+          </select>
+        </div>
+
+        <div class="data-table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>手机号</th>
+                <th>注册时间</th>
+                <th>最后登录</th>
+                <th>状态</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="usersTableBody">
+            </tbody>
+          </table>
+        </div>
+        <div class="empty-state" id="usersEmpty" style="display:none;">
+          <div class="empty-state-icon">&#9786;</div>
+          <div class="empty-state-text">暂无注册顾客</div>
+          <div class="empty-state-sub">顾客通过手机号登录后将自动注册</div>
+        </div>
+      </div>
+
+      <!-- ===== 面板3：评估报告 ===== -->
+      <div class="panel" id="panel-reports">
+        <div class="content-header">
+          <div>
+            <div class="content-title">评估报告</div>
+            <div class="content-title-sub">查看所有顾客的体态评估报告</div>
+          </div>
+        </div>
+
+        <div class="toolbar">
+          <input type="text" class="search-input" id="reportSearch" placeholder="搜索手机号或姓名..." oninput="filterReports()">
+          <select class="filter-select" id="reportScoreFilter" onchange="filterReports()">
+            <option value="all">全部评分</option>
+            <option value="good">良好 (>=80)</option>
+            <option value="fair">一般 (60-79)</option>
+            <option value="poor">需改善 (<60)</option>
+          </select>
+        </div>
+
+        <div class="data-table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>顾客</th>
+                <th>评估时间</th>
+                <th>评分</th>
+                <th>等级</th>
+                <th>问题数</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="reportsTableBody">
+            </tbody>
+          </table>
+        </div>
+        <div class="empty-state" id="reportsEmpty" style="display:none;">
+          <div class="empty-state-icon">&#9776;</div>
+          <div class="empty-state-text">暂无评估报告</div>
+          <div class="empty-state-sub">顾客完成评估后将生成报告</div>
+        </div>
+      </div>
+
+      <!-- ===== 面板4：训练挑战 ===== -->
+      <div class="panel" id="panel-challenges">
+        <div class="content-header">
+          <div>
+            <div class="content-title">训练挑战</div>
+            <div class="content-title-sub">查看所有顾客的挑战参与情况</div>
+          </div>
+        </div>
+
+        <div class="toolbar">
+          <input type="text" class="search-input" id="challengeSearch" placeholder="搜索手机号..." oninput="filterChallenges()">
+          <select class="filter-select" id="challengeStatusFilter" onchange="filterChallenges()">
+            <option value="all">全部状态</option>
+            <option value="active">进行中</option>
+            <option value="completed">已完成</option>
+          </select>
+        </div>
+
+        <div class="data-table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>顾客</th>
+                <th>挑战类型</th>
+                <th>计划档位</th>
+                <th>进度</th>
+                <th>状态</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="challengesTableBody">
+            </tbody>
+          </table>
+        </div>
+        <div class="empty-state" id="challengesEmpty" style="display:none;">
+          <div class="empty-state-icon">&#9883;</div>
+          <div class="empty-state-text">暂无挑战记录</div>
+          <div class="empty-state-sub">顾客参加挑战后将显示记录</div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <script>
+    // ===== 管理员登录 =====
+    const ADMIN_PASSWORD = 'admin888';
+
+    document.getElementById('loginBtn').addEventListener('click', function() {
+      const pwd = document.getElementById('adminPassword').value;
+      if (pwd === ADMIN_PASSWORD) {
+        sessionStorage.setItem('admin_logged_in', 'true');
+        document.getElementById('loginOverlay').classList.add('hidden');
+        document.getElementById('appLayout').classList.remove('hidden');
+        document.getElementById('loginError').classList.remove('show');
+        // 加载数据
+        refreshAllData();
+      } else {
+        document.getElementById('loginError').classList.add('show');
+      }
+    });
+
+    // 回车登录
+    document.getElementById('adminPassword').addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') {
+        document.getElementById('loginBtn').click();
+      }
+    });
+
+    // 检查是否已登录
+    if (sessionStorage.getItem('admin_logged_in') === 'true') {
+      document.getElementById('loginOverlay').classList.add('hidden');
+      document.getElementById('appLayout').classList.remove('hidden');
+      document.addEventListener('DOMContentLoaded', function() {
+        refreshAllData();
+      });
+    }
+
+    // 退出登录
+    function doLogout() {
+      sessionStorage.removeItem('admin_logged_in');
+      document.getElementById('loginOverlay').classList.remove('hidden');
+      document.getElementById('appLayout').classList.add('hidden');
+      document.getElementById('adminPassword').value = '';
+    }
+
+    // ===== 面板切换 =====
+    function switchPanel(name) {
+      // 更新导航高亮
+      document.querySelectorAll('.nav-item').forEach(function(item) {
+        item.classList.toggle('active', item.dataset.panel === name);
+      });
+      // 切换面板显示
+      document.querySelectorAll('.panel').forEach(function(panel) {
+        panel.classList.remove('active');
+      });
+      document.getElementById('panel-' + name).classList.add('active');
+
+      // 切换到对应面板时刷新数据
+      if (name === 'users') renderUsers();
+      if (name === 'reports') renderReports();
+      if (name === 'challenges') renderChallenges();
+      if (name === 'dashboard') refreshDashboard();
+    }
+
+    // ===== 数据读取工具 =====
+    function getUsers() {
+      return JSON.parse(localStorage.getItem('ai_posture_users') || '[]');
+    }
+
+    function formalReportMetrics(report) {
+      return Array.isArray(report.metrics) ? report.metrics : (Array.isArray(report.postureMetrics) ? report.postureMetrics : []);
+    }
+
+    function hasFormalScoringSource(report) {
+      var scoring = report && report.scoring;
+      var metrics = formalReportMetrics(report);
+      if (!scoring || typeof scoring !== 'object' || Array.isArray(scoring)) return false;
+      if (!Array.isArray(metrics) || metrics.length === 0) return false;
+      var metricKeys = metrics.map(function(metric) { return metric && metric.metric_key; });
+      if (Number(scoring.final_score) !== Number(report.score)) return false;
+      if (String(scoring.risk_level || '') !== String(report.riskLevel || '')) return false;
+      if (Number(scoring.source_metric_count) !== metrics.length) return false;
+      if (JSON.stringify(scoring.source_metric_keys || []) !== JSON.stringify(metricKeys)) return false;
+      if (typeof scoring.metric_source_signature !== 'string' || !/^[a-f0-9]{64}$/i.test(scoring.metric_source_signature)) return false;
+      if (!Array.isArray(scoring.deductions)) return false;
+      return true;
+    }
+
+    var REQUIRED_ADMIN_VIEW_ANGLES = {
+      front: 0,
+      right_front: 45,
+      right_side: 90,
+      right_back: 135,
+      back: 180,
+      left_back: 225,
+      left_side: 270,
+      left_front: 315
+    };
+
+    function expectedAdminSideDepthDirection(viewName) {
+      if (['right_front', 'right_side', 'right_back'].indexOf(viewName) >= 0) return 'right';
+      if (['left_front', 'left_side', 'left_back'].indexOf(viewName) >= 0) return 'left';
+      return null;
+    }
+
+    function hasFormalPhotoQualityDirection(photo, expectedAngle) {
+      var viewName = photo && photo.view_name;
+      var quality = photo && photo.quality_result;
+      var checks = quality && quality.checks;
+      if (!quality || quality.generated_from_mock !== false || quality.valid !== true || !checks) return false;
+      var requiredFields = [
+        'expected_angle',
+        'angle_delta',
+        'angle_metadata_consistent',
+        'shoulder_width_ratio',
+        'hip_width_ratio',
+        'face_visibility',
+        'expected_side_depth_direction',
+        'detected_side_depth_direction',
+        'side_depth_signal',
+        'side_depth_consistent',
+        'side_depth_left_z',
+        'side_depth_right_z',
+        'view_angle_consistent'
+      ];
+      if (!requiredFields.every(function(field) { return Object.prototype.hasOwnProperty.call(checks, field); })) return false;
+      if (Number(checks.expected_angle) !== Number(expectedAngle) || Number(checks.angle_delta) > 3 || checks.angle_metadata_consistent !== true) return false;
+      if (checks.view_angle_consistent !== true) return false;
+      var maskQuality = checks.segmentation_mask_quality;
+      if (!maskQuality || maskQuality.valid !== true || maskQuality.generated_from_mock !== false) return false;
+      if (maskQuality.source !== 'mediapipe_pose_segmentation_mask_pixels_and_keypoints') return false;
+      if (Number(maskQuality.keypoint_coverage_ratio) < 0.72) return false;
+      if (!Array.isArray(maskQuality.checked_keypoint_indexes) || maskQuality.checked_keypoint_indexes.length < 6) return false;
+      var expectedSide = expectedAdminSideDepthDirection(viewName);
+      if (checks.expected_side_depth_direction !== expectedSide) return false;
+      if (expectedSide && (checks.detected_side_depth_direction !== expectedSide || checks.side_depth_consistent !== true)) return false;
+      if (!expectedSide && checks.side_depth_consistent === false) return false;
+      return true;
+    }
+
+    var REQUIRED_FORMAL_METRIC_SOURCES = {
+      shoulder_height_diff: { viewGroups: [['front'], ['back']], keypoints: [11, 12] },
+      head_lateral_shift: { viewGroups: [['front'], ['back']], keypoints: [0, 11, 12, 23, 24] },
+      forward_head_posture: { viewGroups: [['left_side'], ['right_side']], keypoints: [7, 8, 11, 12, 23, 24] },
+      rounded_shoulder_risk: { viewGroups: [['left_side'], ['right_side']], keypoints: [11, 12, 23, 24] },
+      pelvic_obliquity: { viewGroups: [['front'], ['back']], keypoints: [23, 24] },
+      pelvic_anterior_tilt: { viewGroups: [['left_side'], ['right_side']], keypoints: [11, 12, 23, 24, 25, 26] },
+      trunk_lean: { viewGroups: [['front'], ['back']], keypoints: [11, 12, 23, 24] },
+      knee_valgus: { viewGroups: [['front']], keypoints: [23, 24, 25, 26, 27, 28] },
+      knee_hyperextension: { viewGroups: [['left_side'], ['right_side']], keypoints: [23, 24, 25, 26, 27, 28] },
+      ankle_alignment: { viewGroups: [['front']], keypoints: [25, 26, 27, 28, 31, 32] }
+    };
+
+    function sameAdminSetValues(actual, expected) {
+      if (!Array.isArray(actual) || !Array.isArray(expected) || actual.length !== expected.length) return false;
+      var normalizedActual = actual.map(function(item) { return String(item); }).sort();
+      var normalizedExpected = expected.map(function(item) { return String(item); }).sort();
+      return normalizedActual.every(function(item, index) { return item === normalizedExpected[index]; });
+    }
+
+    var REQUIRED_DEFORMATION_METRIC_BINDINGS = {
+      shoulder_tilt: { metricKey: 'shoulder_height_diff', scale: 100 },
+      pelvis_tilt: { metricKey: 'pelvic_anterior_tilt', scale: 120 },
+      pelvis_side_tilt: { metricKey: 'pelvic_obliquity', scale: 120 },
+      head_forward: { metricKey: 'forward_head_posture', scale: 80 },
+      head_lateral: { metricKey: 'head_lateral_shift', scale: 100 },
+      trunk_lean: { metricKey: 'trunk_lean', scale: 100 },
+      rounded_shoulder: { metricKey: 'rounded_shoulder_risk', scale: 90 },
+      knee_valgus: { metricKey: 'knee_valgus', scale: 100 },
+      knee_hyperextension: { metricKey: 'knee_hyperextension', scale: 80 },
+      ankle_alignment: { metricKey: 'ankle_alignment', scale: 100 }
+    };
+
+    function hasFormalDeformationMetricEvidence(evidence, bodyParams) {
+      if (!evidence || typeof evidence !== 'object' || Array.isArray(evidence)) return false;
+      if (!bodyParams || typeof bodyParams !== 'object' || Array.isArray(bodyParams)) return false;
+      var requiredFields = Object.keys(REQUIRED_DEFORMATION_METRIC_BINDINGS);
+      if (!sameAdminSetValues(Object.keys(evidence), requiredFields)) return false;
+      return requiredFields.every(function(field) {
+        var item = evidence[field];
+        var binding = REQUIRED_DEFORMATION_METRIC_BINDINGS[field];
+        if (!item || typeof item !== 'object' || Array.isArray(item)) return false;
+        if (item.generated_from_mock !== false || item.source !== 'posture_metrics') return false;
+        if (item.body_param_field !== field || item.metric_key !== binding.metricKey) return false;
+        if (item.reliable !== true || Number(item.scale_divisor) !== binding.scale) return false;
+        var expected = Number(bodyParams[field]);
+        var bodyValue = Number(item.body_param_value);
+        var rawValue = Number(item.metric_raw_value);
+        if (!Number.isFinite(expected) || !Number.isFinite(bodyValue) || Math.abs(expected - bodyValue) > 0.000001) return false;
+        if (!Number.isFinite(rawValue) || Math.abs(expected - rawValue / binding.scale) > 0.000001) return false;
+        return Array.isArray(item.source_views) && item.source_views.length > 0
+          && Array.isArray(item.source_keypoints) && item.source_keypoints.length > 0;
+      });
+    }
+
+    function hasFormalBodyDeformationEvidenceAgainstMetrics(report) {
+      var bodyParams = report && report.bodyParams;
+      if (!bodyParams || bodyParams.deformation_source_status !== 'complete') return false;
+      if (Array.isArray(bodyParams.missing_deformation_metrics) && bodyParams.missing_deformation_metrics.length > 0) return false;
+      if (!hasFormalDeformationMetricEvidence(bodyParams.deformation_metric_evidence, bodyParams)) return false;
+      var metrics = formalReportMetrics(report);
+      var metricByKey = {};
+      metrics.forEach(function(metric) {
+        if (metric && metric.metric_key) metricByKey[metric.metric_key] = metric;
+      });
+      return Object.keys(REQUIRED_DEFORMATION_METRIC_BINDINGS).every(function(field) {
+        var item = bodyParams.deformation_metric_evidence[field];
+        var binding = REQUIRED_DEFORMATION_METRIC_BINDINGS[field];
+        var metric = metricByKey[binding.metricKey];
+        var metricEvidence = metric && metric.evidence;
+        var metricRaw = metric && (metric.raw == null ? metric.value : metric.raw);
+        if (!metric || !metricEvidence) return false;
+        if (item.metric_key !== metric.metric_key || item.metric_name !== metric.metric_name) return false;
+        if (Number(item.metric_raw_value) !== Number(metricRaw) || !Number.isFinite(Number(metricRaw))) return false;
+        if (item.reliable !== metric.reliable) return false;
+        if (!sameAdminSetValues(item.source_views || [], metricEvidence.views || [])) return false;
+        return sameAdminSetValues(item.source_keypoints || [], metricEvidence.keypoints || []);
+      });
+    }
+
+    function hasFormalModelFittingDeformationEvidence(report) {
+      var modelFitting = report && report.modelFitting;
+      var bodyParams = report && report.bodyParams;
+      if (!modelFitting || !bodyParams) return false;
+      if (!hasFormalModelFittingKeypointSources(modelFitting)) return false;
+      if (modelFitting.deformation_source_status !== 'complete') return false;
+      if (modelFitting.deformation_source_status !== bodyParams.deformation_source_status) return false;
+      if (!hasFormalDeformationMetricEvidence(modelFitting.deformation_metric_evidence, bodyParams)) return false;
+      if (JSON.stringify(modelFitting.deformation_metric_evidence || {}) !== JSON.stringify(bodyParams.deformation_metric_evidence || {})) return false;
+      var requiredFields = Object.keys(REQUIRED_DEFORMATION_METRIC_BINDINGS);
+      var fields = modelFitting.metric_deformation_fields;
+      if (!fields || typeof fields !== 'object' || Array.isArray(fields)) return false;
+      if (!sameAdminSetValues(Object.keys(fields), requiredFields)) return false;
+      var fieldValuesMatch = requiredFields.every(function(field) {
+        var fittingValue = Number(fields[field]);
+        var bodyValue = Number(bodyParams[field]);
+        return Number.isFinite(fittingValue) && Number.isFinite(bodyValue) && Math.abs(fittingValue - bodyValue) <= 0.000001;
+      });
+      if (!fieldValuesMatch) return false;
+      var deformationConstraint = (modelFitting.constraints || {}).posture_deformation_constraint || {};
+      if (!sameAdminSetValues(deformationConstraint.deformation_fields || [], requiredFields)) return false;
+      return sameAdminSetValues(deformationConstraint.deformation_metric_evidence_fields || [], requiredFields)
+        && hasFormalFittingOptimization(modelFitting.fitting_optimization, modelFitting.body_params_source_fields);
+    }
+
+    function hasFormalFittingOptimization(optimization, bodyParams) {
+      if (!optimization || optimization.generated_from_mock !== false) return false;
+      if (['converged', 'stationary'].indexOf(optimization.status) < 0) return false;
+      if (optimization.method !== 'deterministic_multiview_coordinate_descent') return false;
+      if (optimization.objective !== 'weighted_keypoint_silhouette_proportion_ground_contact_loss') return false;
+      var requiredViews = Object.keys(REQUIRED_ADMIN_VIEW_ANGLES);
+      if (!sameAdminSetValues(optimization.source_views || [], requiredViews)) return false;
+      var maskHashes = optimization.mask_hashes;
+      if (!maskHashes || !sameAdminSetValues(Object.keys(maskHashes), requiredViews)) return false;
+      if (Object.keys(maskHashes).some(function(view) { return typeof maskHashes[view] !== 'string' || maskHashes[view].length !== 64; })) return false;
+      var initialLoss = optimization.initial_loss;
+      var finalLoss = optimization.final_loss;
+      if (!initialLoss || !finalLoss || !Number.isFinite(Number(initialLoss.total_loss)) || !Number.isFinite(Number(finalLoss.total_loss))) return false;
+      if (Number(finalLoss.total_loss) > Number(initialLoss.total_loss) + 0.000001) return false;
+      if (!Array.isArray(initialLoss.per_view) || !Array.isArray(finalLoss.per_view)) return false;
+      if (!sameAdminSetValues(initialLoss.per_view.map(function(item) { return item.view_name; }), requiredViews)) return false;
+      if (!sameAdminSetValues(finalLoss.per_view.map(function(item) { return item.view_name; }), requiredViews)) return false;
+      var finalParams = optimization.final_params || {};
+      return ['shoulder_width', 'hip_width', 'body_depth', 'thigh_length', 'calf_length', 'leg_length'].every(function(key) {
+        return Number.isFinite(Number(finalParams[key])) && Math.abs(Number(finalParams[key]) - Number(bodyParams[key])) <= 0.000001;
+      }) && Math.abs(Number(finalParams.leg_length) - Number((Number(finalParams.thigh_length) + Number(finalParams.calf_length)).toFixed(4))) <= 0.000001;
+    }
+
+    function hasFormalModelFittingKeypointSources(modelFitting) {
+      var fixedViews = modelFitting && modelFitting.fixed_camera_views;
+      if (!Array.isArray(fixedViews) || fixedViews.length !== 8) return false;
+      return fixedViews.every(function(record) {
+        if (!record || record.has_keypoints !== true) return false;
+        if (!Number.isFinite(Number(record.keypoint_count)) || Number(record.keypoint_count) <= 0) return false;
+        if (!Array.isArray(record.source_keypoint_indexes) || record.source_keypoint_indexes.length < 8) return false;
+        if (record.source_keypoint_count !== record.source_keypoint_indexes.length) return false;
+        if (record.source_keypoint_count !== record.visible_keypoint_count) return false;
+        var confidenceSummary = record.source_keypoint_confidence_summary;
+        if (!confidenceSummary || typeof confidenceSummary !== 'object' || Array.isArray(confidenceSummary)) return false;
+        if (confidenceSummary.source !== 'mediapipe_visible_keypoints') return false;
+        if (confidenceSummary.confidence_threshold !== 0.35 || confidenceSummary.count !== record.source_keypoint_count) return false;
+        if (!adminFiniteProjectionError(confidenceSummary.min) || !adminFiniteProjectionError(confidenceSummary.mean)) return false;
+        if (Number(confidenceSummary.min) < 0.35 || Number(confidenceSummary.mean) < 0.35) return false;
+        return typeof record.source_keypoint_coordinate_hash === 'string' && record.source_keypoint_coordinate_hash.length === 64;
+      });
+    }
+
+    function hasFormalMetricEvidence(report) {
+      var metrics = formalReportMetrics(report);
+      if (!Array.isArray(metrics) || metrics.length < Object.keys(REQUIRED_FORMAL_METRIC_SOURCES).length) return false;
+      var metricByKey = {};
+      metrics.forEach(function(metric) {
+        if (metric && metric.metric_key) metricByKey[metric.metric_key] = metric;
+      });
+      return Object.keys(REQUIRED_FORMAL_METRIC_SOURCES).every(function(metricKey) {
+        var metric = metricByKey[metricKey];
+        var expected = REQUIRED_FORMAL_METRIC_SOURCES[metricKey];
+        var evidence = metric && metric.evidence;
+        if (!metric || typeof metric.reliable !== 'boolean' || !evidence) return false;
+        if (!expected.viewGroups.some(function(group) { return sameAdminSetValues(evidence.views || [], group); })) return false;
+        return sameAdminSetValues(evidence.keypoints || [], expected.keypoints);
+      });
+    }
+
+    function normalizeAdminArtifactUrl(url) {
+      if (!url || typeof url !== 'string') return '';
+      if (url.indexOf('/data/') === 0) return 'http://127.0.0.1:8000' + url;
+      return url;
+    }
+
+    function hasFormalModelArtifactIntegrity(report) {
+      var pipeline = report && report.modelPipeline;
+      if (!pipeline || pipeline.generated_from_mock !== false || pipeline.provider !== 'AnatomyParametricBodyProvider') return false;
+      var providerContract = pipeline.provider_contract;
+      if (!providerContract || providerContract.generated_from_mock !== false) return false;
+      if (providerContract.provider !== 'AnatomyParametricBodyProvider' || providerContract.model_type !== 'anatomy_parametric_body') return false;
+      if (providerContract.input_contract !== 'customer_profile_eight_view_keypoints_and_mediapipe_masks') return false;
+      if (!hasFormalModelMeta(report)) return false;
+      var integrity = pipeline.artifact_integrity || {};
+      var expected = {
+        obj: report.modelObjUrl,
+        glb: report.modelGlbUrl,
+        manifest: report.modelManifestUrl,
+        fitting: report.modelFittingUrl,
+        projection_summary: report.modelProjectionSummaryUrl,
+        params: report.sourceData && report.sourceData.body_params_url,
+        regions: report.modelRegionsUrl
+      };
+      return Object.keys(expected).every(function(key) {
+        var record = integrity[key];
+        return !!expected[key]
+          && !!record
+          && normalizeAdminArtifactUrl(record.url) === normalizeAdminArtifactUrl(expected[key])
+          && typeof record.sha256 === 'string'
+          && record.sha256.length === 64
+        && Number(record.size) > 0;
+      });
+    }
+
+    var REQUIRED_ANATOMY_COMPONENT_GROUPS = [
+      'head_neck',
+      'shoulder_girdle',
+      'thorax_waist',
+      'pelvis_hip',
+      'upper_limb',
+      'lower_limb',
+      'foot_ankle'
+    ];
+
+    function hasFormalModelMeta(report) {
+      var pipeline = report && report.modelPipeline;
+      var modelMeta = pipeline && pipeline.model_meta;
+      var bodyParams = report && report.bodyParams;
+      if (!modelMeta || !bodyParams) return false;
+      if (modelMeta.anatomy_component_driver_status !== 'complete') return false;
+      if (modelMeta.anatomy_component_group_count !== REQUIRED_ANATOMY_COMPONENT_GROUPS.length) return false;
+      if (modelMeta.anatomy_component_quality_status !== 'complete') return false;
+      var ground = modelMeta.ground_contact_evidence;
+      var contactObjects = ['left_heel', 'left_foot_arch', 'left_forefoot', 'right_heel', 'right_foot_arch', 'right_forefoot'];
+      if (!ground || ground.generated_from_mock !== false || ground.status !== 'applied') return false;
+      if (ground.source !== 'generated_foot_mesh_vertices' || Number(ground.virtual_floor_y) !== 0) return false;
+      if (ground.refreshed_after_height_constraint !== true) return false;
+      if (!sameAdminSetValues(ground.contact_objects || [], contactObjects)) return false;
+      if (Math.abs(Number(ground.post_global_min_y)) > 0.000001) return false;
+      if (Math.min(Number(ground.left_foot_min_y), Number(ground.right_foot_min_y)) > 0.000001) return false;
+      var heightEvidence = modelMeta.height_constraint_evidence;
+      var expectedHeightCm = Number(bodyParams.height_cm);
+      var expectedHeightM = expectedHeightCm / 100;
+      if (!heightEvidence || heightEvidence.generated_from_mock !== false || heightEvidence.status !== 'applied') return false;
+      if (heightEvidence.source !== 'customer_height_cm_and_generated_body_mesh_vertices' || heightEvidence.horizontal_dimensions_preserved !== true) return false;
+      if (!Number.isFinite(expectedHeightCm) || expectedHeightCm <= 0) return false;
+      if (Math.abs(Number(heightEvidence.target_height_cm) - expectedHeightCm) > 0.0001) return false;
+      if (Math.abs(Number(heightEvidence.target_height_m) - expectedHeightM) > 0.000001) return false;
+      if (!Number.isFinite(Number(heightEvidence.pre_height_m)) || Number(heightEvidence.pre_height_m) <= 0) return false;
+      if (!Number.isFinite(Number(heightEvidence.vertical_scale)) || Number(heightEvidence.vertical_scale) <= 0) return false;
+      if (Math.abs(Number(heightEvidence.vertical_scale) - expectedHeightM / Number(heightEvidence.pre_height_m)) > 0.000002) return false;
+      if (Math.abs(Number(heightEvidence.post_min_y)) > 0.000001) return false;
+      if (Math.abs(Number(heightEvidence.post_max_y) - expectedHeightM) > 0.000001) return false;
+      if (Math.abs(Number(heightEvidence.post_height_m) - expectedHeightM) > 0.000001) return false;
+      var allBounds = Object.keys(modelMeta.object_stats || {}).map(function(name) {
+        return modelMeta.object_stats[name] && modelMeta.object_stats[name].bounds;
+      }).filter(Boolean);
+      if (!allBounds.length) return false;
+      var geometryMinY = Math.min.apply(null, allBounds.map(function(bounds) { return Number(bounds.min[1]); }));
+      var geometryMaxY = Math.max.apply(null, allBounds.map(function(bounds) { return Number(bounds.max[1]); }));
+      if (Math.abs(geometryMinY - Number(heightEvidence.post_min_y)) > 0.000001) return false;
+      if (Math.abs(geometryMaxY - Number(heightEvidence.post_max_y)) > 0.000001) return false;
+      if (modelMeta.deformation_source_status !== 'complete') return false;
+      if (!hasFormalDeformationMetricEvidence(modelMeta.deformation_metric_evidence, bodyParams)) return false;
+      var drivers = modelMeta.anatomy_component_drivers;
+      if (!drivers || typeof drivers !== 'object' || Array.isArray(drivers)) return false;
+      var quality = modelMeta.anatomy_component_quality;
+      if (!quality || typeof quality !== 'object' || Array.isArray(quality)) return false;
+      return REQUIRED_ANATOMY_COMPONENT_GROUPS.every(function(groupKey) {
+        var driver = drivers[groupKey];
+        if (!driver || typeof driver !== 'object' || Array.isArray(driver)) return false;
+        if (driver.generated_from_mock !== false || driver.present !== true) return false;
+        if (driver.source !== 'customer_profile_eight_view_keypoints_posture_metrics') return false;
+        if (!Array.isArray(driver.objects) || driver.objects.length === 0) return false;
+        if (Array.isArray(driver.missing_objects) && driver.missing_objects.length > 0) return false;
+        if (!hasFormalDeformationMetricEvidence(driver.deformation_metric_evidence, bodyParams)) return false;
+        var groupQuality = quality[groupKey];
+        if (!groupQuality || typeof groupQuality !== 'object' || Array.isArray(groupQuality)) return false;
+        if (groupQuality.generated_from_mock !== false) return false;
+        if (groupQuality.source !== 'anatomy_parametric_body_obj_components') return false;
+        if (groupQuality.required_objects_present !== true || groupQuality.continuity_status !== 'continuous_component_chain') return false;
+        if (groupQuality.object_count !== driver.objects.length) return false;
+        if (!Number.isFinite(Number(groupQuality.vertex_count)) || Number(groupQuality.vertex_count) <= 0) return false;
+        if (!Number.isFinite(Number(groupQuality.face_count)) || Number(groupQuality.face_count) <= 0) return false;
+        var objectStats = groupQuality.object_stats || {};
+        var objectStatsValid = driver.objects.every(function(objectName) {
+          var stats = objectStats[objectName];
+          var bounds = stats && stats.bounds;
+          return !!stats
+            && Number.isFinite(Number(stats.vertex_count))
+            && Number(stats.vertex_count) > 0
+            && Number.isFinite(Number(stats.face_count))
+            && Number(stats.face_count) > 0
+            && !!bounds
+            && ['min', 'max', 'center'].every(function(field) {
+              var values = bounds[field];
+              return Array.isArray(values)
+                && values.length === 3
+                && values.every(function(value) { return Number.isFinite(Number(value)); });
+            })
+            && ['width', 'height', 'depth'].every(function(field) {
+              return Number.isFinite(Number(bounds[field])) && Number(bounds[field]) > 0;
+            })
+            && Number.isFinite(Number(stats.bounds_volume))
+            && Number(stats.bounds_volume) > 0
+            && Math.abs(Number(stats.bounds_volume) - (Number(bounds.width) * Number(bounds.height) * Number(bounds.depth))) <= 0.000001;
+        });
+        if (!objectStatsValid) return false;
+        return modelDriverValuesMatchBodyParams(driver.body_param_fields, driver.body_param_values, bodyParams)
+          && modelDriverValuesMatchBodyParams(driver.deformation_fields, driver.deformation_values, bodyParams);
+      });
+    }
+
+    function modelDriverValuesMatchBodyParams(fields, values, bodyParams) {
+      if (!Array.isArray(fields) || fields.length === 0 || !values || typeof values !== 'object') return false;
+      return fields.every(function(field) {
+        if (!Object.prototype.hasOwnProperty.call(values, field) || !Object.prototype.hasOwnProperty.call(bodyParams || {}, field)) return false;
+        var expected = Number(bodyParams[field]);
+        var actual = Number(values[field]);
+        return Number.isFinite(expected) && Number.isFinite(actual) && Math.abs(expected - actual) <= 0.000001;
+      });
+    }
+
+    function hasFormalReportArtifactUrls(report) {
+      var sourceData = report && report.sourceData;
+      if (!sourceData) return false;
+      var expected = {
+        customer_info_url: report.customerInfoUrl,
+        photo_quality_summary_url: report.photoQualitySummaryUrl,
+        pose_segmentation_summary_url: report.poseSegmentationSummaryUrl,
+        report_metrics_url: report.reportMetricsUrl,
+        scoring_url: report.scoringUrl,
+        main_problems_url: report.mainProblemsUrl,
+        focus_areas_url: report.focusAreasUrl,
+        zhengjin_suggestions_url: report.suggestionsUrl,
+        correction_plan_url: report.correctionPlanUrl,
+        narrative_evidence_url: report.narrativeEvidenceUrl,
+        analysis_evidence_url: report.analysisEvidenceUrl,
+        model_manifest_url: report.modelManifestUrl,
+        model_fitting_url: report.modelFittingUrl,
+        model_projection_summary_url: report.modelProjectionSummaryUrl,
+        body_regions_url: report.modelRegionsUrl
+      };
+      return Object.keys(expected).every(function(key) {
+        return !!expected[key]
+          && !!sourceData[key]
+          && normalizeAdminArtifactUrl(sourceData[key]) === normalizeAdminArtifactUrl(expected[key]);
+      });
+    }
+
+    function hasFormalReportArtifactIntegrity(report) {
+      var sourceData = report && report.sourceData;
+      var integrity = report && report.reportArtifactIntegrity;
+      if (!sourceData || !integrity) return false;
+      if (JSON.stringify(sourceData.report_artifact_integrity || {}) !== JSON.stringify(integrity || {})) return false;
+      var expected = {
+        posture_metrics: report.reportMetricsUrl,
+        scoring: report.scoringUrl,
+        main_problems: report.mainProblemsUrl,
+        focus_areas: report.focusAreasUrl,
+        zhengjin_suggestions: report.suggestionsUrl,
+        correction_plan: report.correctionPlanUrl,
+        narrative_evidence: report.narrativeEvidenceUrl
+      };
+      return Object.keys(expected).every(function(key) {
+        var record = integrity[key];
+        return !!expected[key]
+          && !!record
+          && normalizeAdminArtifactUrl(record.url) === normalizeAdminArtifactUrl(expected[key])
+          && typeof record.sha256 === 'string'
+          && record.sha256.length === 64
+          && Number(record.size) > 0;
+      });
+    }
+
+    function hasFormalAnalysisEvidenceRecords(report) {
+      var records = report && report.analysisEvidenceRecords;
+      if (!Array.isArray(records) || records.length !== 8) return false;
+      var byView = {};
+      var primaryAnalysisViews = ['front', 'back', 'left_side', 'right_side'];
+      records.forEach(function(record) {
+        if (record && record.view_name) byView[record.view_name] = record;
+      });
+      if (!sameAdminSetValues(Object.keys(byView), Object.keys(REQUIRED_ADMIN_VIEW_ANGLES))) return false;
+      return Object.keys(REQUIRED_ADMIN_VIEW_ANGLES).every(function(viewName) {
+        var record = byView[viewName];
+        if (!record || record.generated_from_mock !== false) return false;
+        if (!record.source_image_url || !record.image_url || record.image_url !== record.source_image_url) return false;
+        if (!record.keypoints_json || !record.segmentation_mask_url || !record.contour_points_url || !record.keypoint_visualization_url) return false;
+        var sourceSize = record.source_image_size || {};
+        var maskForeground = record.segmentation_mask_foreground || {};
+        var maskBounds = maskForeground.foreground_bounds || {};
+        var maskPixelCount = Number(sourceSize.width) * Number(sourceSize.height);
+        if (maskForeground.generated_from_mock !== false
+          || maskForeground.source !== 'mediapipe_pose_segmentation_mask_pixels'
+          || maskForeground.status !== 'measured'
+          || Number(maskForeground.width) !== Number(sourceSize.width)
+          || Number(maskForeground.height) !== Number(sourceSize.height)
+          || Number(maskForeground.pixel_count) !== maskPixelCount
+          || Number(maskForeground.foreground_pixel_count) <= 0
+          || Number(maskForeground.foreground_ratio) <= 0
+          || Number(maskForeground.foreground_ratio) >= 1
+          || Number(maskBounds.width) <= 0
+          || Number(maskBounds.height) <= 0) return false;
+        if (primaryAnalysisViews.indexOf(viewName) < 0) {
+          return !record.analysis_image_url && !record.analysis_image_sha256 && !record.analysis_overlay_pixel_diff && !record.analysis_contour_overlay;
+        }
+        if (!record.analysis_image_url || !record.analysis_image_sha256 || !record.analysis_image_size) return false;
+        if (record.analysis_generation_method !== 'drawn_on_customer_source_photo_with_pose_keypoints_and_mediapipe_contour') return false;
+        if (record.analysis_overlay_source !== 'customer_photo_pose_keypoints_and_contour') return false;
+        if (record.analysis_drawn_on_source !== true) return false;
+        var sourceFields = Array.isArray(record.analysis_overlay_source_fields) ? record.analysis_overlay_source_fields : [];
+        var hasOverlaySourceFields = ['customer_source_image', 'mediapipe_pose_keypoints', 'mediapipe_pose_segmentation_contour'].every(function(field) {
+          return sourceFields.indexOf(field) >= 0;
+        });
+        if (!hasOverlaySourceFields) return false;
+        var pixelDiff = record.analysis_overlay_pixel_diff;
+        var contourOverlay = record.analysis_contour_overlay;
+        var expectedPixelCount = Number(sourceSize.width) * Number(sourceSize.height);
+        return !!pixelDiff
+          && pixelDiff.generated_from_mock === false
+          && pixelDiff.source === 'source_vs_analysis_pixel_diff'
+          && pixelDiff.status === 'measured'
+          && Number(pixelDiff.pixel_count) === expectedPixelCount
+          && Number(pixelDiff.changed_pixel_count) > 0
+          && Number(pixelDiff.changed_pixel_ratio) > 0
+          && Number(pixelDiff.changed_pixel_ratio) < 0.5
+          && Number(pixelDiff.mean_absolute_difference) > 0
+          && Number(pixelDiff.max_channel_difference) > 0
+          && !!contourOverlay
+          && contourOverlay.generated_from_mock === false
+          && contourOverlay.source === 'analysis_pixels_vs_mediapipe_segmentation_boundary'
+          && contourOverlay.status === 'measured'
+          && contourOverlay.contour_method === 'binary_mask_morphological_boundary_3x3'
+          && JSON.stringify(contourOverlay.contour_rgb) === JSON.stringify([6, 182, 212])
+          && contourOverlay.segmentation_mask_sha256 === record.segmentation_mask_sha256
+          && Number(contourOverlay.edge_pixel_count) > 0
+          && Number(contourOverlay.matched_edge_pixel_count) === Number(contourOverlay.edge_pixel_count)
+          && Number(contourOverlay.coverage_ratio) === 1;
+      });
+    }
+
+    function hasFormalAnalysisImages(report) {
+      var images = report && report.analysisImages;
+      var sourceData = report && report.sourceData;
+      var required = ['front_analysis', 'back_analysis', 'left_side_analysis', 'right_side_analysis'];
+      if (!images || !sourceData || sourceData.analysis_image_count !== 4) return false;
+      if (!sameAdminSetValues(Object.keys(images), required)) return false;
+      if (JSON.stringify(sourceData.analysis_images || {}) !== JSON.stringify(images || {})) return false;
+      return required.every(function(key) {
+        return typeof images[key] === 'string' && normalizeAdminArtifactUrl(images[key]).indexOf('/data/assessment_') === 0;
+      });
+    }
+
+    function hasFormalTraceablePhotos(report) {
+      var photos = report && report.photos;
+      var records = report && report.analysisEvidenceRecords;
+      if (!Array.isArray(photos) || photos.length !== 8 || !Array.isArray(records) || records.length !== 8) return false;
+      var photoByView = {};
+      var evidenceByView = {};
+      photos.forEach(function(photo) {
+        if (photo && photo.view_name) photoByView[photo.view_name] = photo;
+      });
+      records.forEach(function(record) {
+        if (record && record.view_name) evidenceByView[record.view_name] = record;
+      });
+      if (!sameAdminSetValues(Object.keys(photoByView), Object.keys(REQUIRED_ADMIN_VIEW_ANGLES))) return false;
+      return Object.keys(REQUIRED_ADMIN_VIEW_ANGLES).every(function(viewName) {
+        var photo = photoByView[viewName];
+        var evidence = evidenceByView[viewName];
+        if (!photo || !evidence) return false;
+        if (photo.assessment_id !== report.assessmentId) return false;
+        if (!Number.isFinite(Number(photo.angle)) || Number(photo.angle) !== REQUIRED_ADMIN_VIEW_ANGLES[viewName]) return false;
+        if (typeof photo.upload_time !== 'string' || Number.isNaN(Date.parse(photo.upload_time))) return false;
+        if (photo.quality_status !== 'valid' || photo.analysis_status !== 'keypoints_ready') return false;
+        if (!photo.quality_result || photo.quality_result.generated_from_mock !== false || photo.quality_result.valid !== true) return false;
+        if (!hasFormalPhotoQualityDirection(photo, REQUIRED_ADMIN_VIEW_ANGLES[viewName])) return false;
+        if (photo.segmentation_method !== 'mediapipe_pose_segmentation') return false;
+        if (!photo.image_url || photo.image_url !== evidence.source_image_url || photo.image_url !== evidence.image_url) return false;
+        if (!photo.keypoints_json || photo.keypoints_json !== evidence.keypoints_json) return false;
+        if (!photo.segmentation_mask_url || photo.segmentation_mask_url !== evidence.segmentation_mask_url) return false;
+        if (!photo.contour_points_url || photo.contour_points_url !== evidence.contour_points_url) return false;
+        if (!photo.keypoint_visualization_url || photo.keypoint_visualization_url !== evidence.keypoint_visualization_url) return false;
+        return true;
+      });
+    }
+
+    function buildAdminSourcePhotoEvidenceRecords(photos, evidenceRecords) {
+      var evidenceByView = {};
+      (evidenceRecords || []).forEach(function(record) {
+        if (record && record.view_name) evidenceByView[record.view_name] = record;
+      });
+      return (photos || []).slice().sort(function(a, b) {
+        return String(a && a.view_name || '').localeCompare(String(b && b.view_name || ''));
+      }).map(function(photo) {
+        var viewName = String(photo && photo.view_name || '');
+        var evidence = evidenceByView[viewName] || {};
+        return {
+          view_name: viewName,
+          angle: photo.angle,
+          upload_time: photo.upload_time,
+          quality_status: photo.quality_status,
+          analysis_status: photo.analysis_status,
+          image_url: normalizeAdminArtifactUrl(photo.image_url || ''),
+          source_image_url: normalizeAdminArtifactUrl(evidence.source_image_url || ''),
+          source_image_sha256: evidence.source_image_sha256,
+          keypoints_json: normalizeAdminArtifactUrl(photo.keypoints_json || ''),
+          keypoints_json_sha256: evidence.keypoints_json_sha256,
+          keypoint_visualization_url: normalizeAdminArtifactUrl(evidence.keypoint_visualization_url || ''),
+          keypoint_visualization_sha256: evidence.keypoint_visualization_sha256,
+          segmentation_mask_url: normalizeAdminArtifactUrl(evidence.segmentation_mask_url || ''),
+          segmentation_mask_sha256: evidence.segmentation_mask_sha256,
+          contour_points_url: normalizeAdminArtifactUrl(evidence.contour_points_url || ''),
+          contour_points_sha256: evidence.contour_points_sha256
+        };
+      });
+    }
+
+    function normalizeAdminSourcePhotoEvidenceRecords(records) {
+      if (!Array.isArray(records) || records.length !== 8) return null;
+      return records.slice().sort(function(a, b) {
+        return String(a && a.view_name || '').localeCompare(String(b && b.view_name || ''));
+      }).map(function(record) {
+        if (!record || typeof record !== 'object' || Array.isArray(record)) return null;
+        return {
+          view_name: String(record.view_name || ''),
+          angle: record.angle,
+          upload_time: record.upload_time,
+          quality_status: record.quality_status,
+          analysis_status: record.analysis_status,
+          image_url: normalizeAdminArtifactUrl(record.image_url || ''),
+          source_image_url: normalizeAdminArtifactUrl(record.source_image_url || ''),
+          source_image_sha256: record.source_image_sha256,
+          keypoints_json: normalizeAdminArtifactUrl(record.keypoints_json || ''),
+          keypoints_json_sha256: record.keypoints_json_sha256,
+          keypoint_visualization_url: normalizeAdminArtifactUrl(record.keypoint_visualization_url || ''),
+          keypoint_visualization_sha256: record.keypoint_visualization_sha256,
+          segmentation_mask_url: normalizeAdminArtifactUrl(record.segmentation_mask_url || ''),
+          segmentation_mask_sha256: record.segmentation_mask_sha256,
+          contour_points_url: normalizeAdminArtifactUrl(record.contour_points_url || ''),
+          contour_points_sha256: record.contour_points_sha256
+        };
+      });
+    }
+
+    function hasFormalSourcePhotoEvidenceRecords(report) {
+      var sourceData = report && report.sourceData;
+      if (!sourceData || !Array.isArray(sourceData.photo_evidence_records)) return false;
+      var normalizedRecords = normalizeAdminSourcePhotoEvidenceRecords(sourceData.photo_evidence_records);
+      if (!normalizedRecords || normalizedRecords.some(function(record) { return !record; })) return false;
+      if (!sameAdminSetValues(normalizedRecords.map(function(record) { return record.view_name; }), Object.keys(REQUIRED_ADMIN_VIEW_ANGLES))) return false;
+      var expectedRecords = buildAdminSourcePhotoEvidenceRecords(report.photos, report.analysisEvidenceRecords);
+      return JSON.stringify(normalizedRecords) === JSON.stringify(expectedRecords);
+    }
+
+    function hasFormalCustomerInfoArtifact(report) {
+      var sourceData = report && report.sourceData;
+      var integrity = report && report.customerInfoIntegrity;
+      if (!report || !sourceData || !report.customerInfoUrl || !integrity) return false;
+      if (normalizeAdminArtifactUrl(sourceData.customer_info_url) !== normalizeAdminArtifactUrl(report.customerInfoUrl)) return false;
+      if (JSON.stringify(sourceData.customer_info_integrity || {}) !== JSON.stringify(integrity || {})) return false;
+      return normalizeAdminArtifactUrl(integrity.url) === normalizeAdminArtifactUrl(report.customerInfoUrl)
+        && typeof integrity.sha256 === 'string'
+        && integrity.sha256.length === 64
+        && Number(integrity.size) > 0;
+    }
+
+    function hasFormalPhotoQualityArtifact(report) {
+      var sourceData = report && report.sourceData;
+      var integrity = report && report.photoQualityIntegrity;
+      var summary = report && report.photoQualitySummary;
+      if (!report || !sourceData || !report.photoQualitySummaryUrl || !integrity || !summary) return false;
+      if (normalizeAdminArtifactUrl(sourceData.photo_quality_summary_url) !== normalizeAdminArtifactUrl(report.photoQualitySummaryUrl)) return false;
+      if (JSON.stringify(sourceData.photo_quality_integrity || {}) !== JSON.stringify(integrity || {})) return false;
+      if (summary.generated_from_mock !== false || summary.photo_count !== 8 || summary.valid_count !== 8) return false;
+      if (!Array.isArray(summary.records) || summary.records.length !== 8) return false;
+      var photoByView = {};
+      (report.photos || []).forEach(function(photo) {
+        if (photo && photo.view_name) photoByView[photo.view_name] = photo;
+      });
+      var recordMatchesPhotos = summary.records.every(function(record) {
+        if (!record || !record.view_name || !photoByView[record.view_name]) return false;
+        var photo = photoByView[record.view_name];
+        var fields = ['assessment_id', 'angle', 'upload_time', 'quality_status', 'analysis_status', 'image_url', 'keypoints_json', 'keypoint_visualization_url', 'segmentation_mask_url', 'segmentation_method', 'contour_points_url'];
+        var fieldsMatch = fields.every(function(field) {
+          return record[field] === photo[field];
+        });
+        return fieldsMatch && JSON.stringify(record.quality_result || {}) === JSON.stringify(photo.quality_result || {});
+      });
+      if (!recordMatchesPhotos) return false;
+      return normalizeAdminArtifactUrl(integrity.url) === normalizeAdminArtifactUrl(report.photoQualitySummaryUrl)
+        && typeof integrity.sha256 === 'string'
+        && integrity.sha256.length === 64
+        && Number(integrity.size) > 0;
+    }
+
+    function hasFormalPoseSegmentationArtifact(report) {
+      var sourceData = report && report.sourceData;
+      var integrity = report && report.poseSegmentationIntegrity;
+      var summary = report && report.poseSegmentationSummary;
+      if (!report || !sourceData || !report.poseSegmentationSummaryUrl || !integrity || !summary) return false;
+      if (normalizeAdminArtifactUrl(sourceData.pose_segmentation_summary_url) !== normalizeAdminArtifactUrl(report.poseSegmentationSummaryUrl)) return false;
+      if (JSON.stringify(sourceData.pose_segmentation_integrity || {}) !== JSON.stringify(integrity || {})) return false;
+      if (summary.generated_from_mock !== false || summary.view_count !== 8 || summary.segmentation_method !== 'mediapipe_pose_segmentation') return false;
+      if (!Array.isArray(summary.records) || summary.records.length !== 8) return false;
+      var evidenceByView = {};
+      (report.analysisEvidenceRecords || []).forEach(function(record) {
+        if (record && record.view_name) evidenceByView[record.view_name] = record;
+      });
+      var recordsMatchEvidence = summary.records.every(function(record) {
+        var evidence = record && evidenceByView[record.view_name];
+        return !!evidence
+          && record.segmentation_mask_url === evidence.segmentation_mask_url
+          && JSON.stringify(record.segmentation_mask_foreground || {}) === JSON.stringify(evidence.segmentation_mask_foreground || {});
+      });
+      if (!recordsMatchEvidence) return false;
+      return normalizeAdminArtifactUrl(integrity.url) === normalizeAdminArtifactUrl(report.poseSegmentationSummaryUrl)
+        && typeof integrity.sha256 === 'string'
+        && integrity.sha256.length === 64
+        && Number(integrity.size) > 0;
+    }
+
+    function hasFormalAnalysisEvidenceArtifact(report) {
+      var sourceData = report && report.sourceData;
+      var integrity = report && report.analysisEvidenceIntegrity;
+      if (!report || !sourceData || !report.analysisEvidenceUrl || !integrity) return false;
+      if (normalizeAdminArtifactUrl(sourceData.analysis_evidence_url) !== normalizeAdminArtifactUrl(report.analysisEvidenceUrl)) return false;
+      if (JSON.stringify(sourceData.analysis_evidence_integrity || {}) !== JSON.stringify(integrity || {})) return false;
+      return normalizeAdminArtifactUrl(integrity.url) === normalizeAdminArtifactUrl(report.analysisEvidenceUrl)
+        && typeof integrity.sha256 === 'string'
+        && integrity.sha256.length === 64
+        && Number(integrity.size) > 0;
+    }
+
+    function adminFiniteProjectionError(value) {
+      var n = Number(value);
+      return Number.isFinite(n) && n >= 0 && n <= 1;
+    }
+
+    function adminProjectionBoxValid(box) {
+      if (!box || typeof box !== 'object' || Array.isArray(box)) return false;
+      return ['min_x', 'min_y', 'max_x', 'max_y'].every(function(key) {
+        var value = Number(box[key]);
+        return Number.isFinite(value) && value >= 0 && value <= 1;
+      });
+    }
+
+    function hasFormalProjectionFitEvidence(summary, modelFitting) {
+      var fitErrorSummary = summary && summary.fit_error_summary;
+      if (!fitErrorSummary || typeof fitErrorSummary !== 'object' || Array.isArray(fitErrorSummary)) return false;
+      if (fitErrorSummary.source !== 'per_view_projection_fit') return false;
+      if (fitErrorSummary.keypoint_view_count !== 8 || fitErrorSummary.silhouette_view_count !== 8) return false;
+      var summaryFields = [
+        'mean_keypoint_reprojection_error',
+        'max_keypoint_reprojection_error',
+        'mean_silhouette_reprojection_error',
+        'max_silhouette_reprojection_error'
+      ];
+      if (!summaryFields.every(function(field) { return adminFiniteProjectionError(fitErrorSummary[field]); })) return false;
+      var records = Array.isArray(summary && summary.records) ? summary.records : [];
+      if (records.length !== 8) return false;
+      var fittingByView = {};
+      (Array.isArray(modelFitting && modelFitting.fixed_camera_views) ? modelFitting.fixed_camera_views : []).forEach(function(record) {
+        if (record && record.view_name) fittingByView[record.view_name] = record;
+      });
+      return records.every(function(record) {
+        var fit = record && record.projection_fit;
+        var fittingRecord = fittingByView[record && record.view_name];
+        if (!fittingRecord) return false;
+        if (record.projection_method !== 'parametric_body_fixed_camera_projection_summary') return false;
+        if (record.keypoint_projection_status !== 'measured_against_same_body_params_and_view_keypoints') return false;
+        if (record.silhouette_projection_status !== 'measured_against_mediapipe_pose_segmentation_mask') return false;
+        if (!fit || fit.status !== 'measured') return false;
+        if (!adminFiniteProjectionError(fit.keypoint_reprojection_error)) return false;
+        if (!adminFiniteProjectionError(fit.silhouette_reprojection_error)) return false;
+        if (!adminProjectionBoxValid(fit.observed_keypoint_box)) return false;
+        if (!adminProjectionBoxValid(fit.projected_model_box)) return false;
+        var silhouette = fit.observed_silhouette;
+        if (!silhouette || silhouette.generated_from_mock !== false || silhouette.source !== 'mediapipe_pose_segmentation_mask_pixels') return false;
+        if (typeof silhouette.mask_sha256 !== 'string' || silhouette.mask_sha256.length !== 64) return false;
+        var maskSize = silhouette.mask_size || {};
+        var bounds = silhouette.foreground_bounds || {};
+        var maskWidth = Number(maskSize.width);
+        var maskHeight = Number(maskSize.height);
+        var boundsWidth = Number(bounds.width);
+        var boundsHeight = Number(bounds.height);
+        var silhouetteRatio = Number(silhouette.width_height_ratio);
+        if (!Number.isFinite(maskWidth) || maskWidth <= 0 || !Number.isFinite(maskHeight) || maskHeight <= 0) return false;
+        if (!Number.isFinite(Number(silhouette.foreground_pixel_count)) || Number(silhouette.foreground_pixel_count) <= 0) return false;
+        if (!Number.isFinite(boundsWidth) || boundsWidth <= 0 || !Number.isFinite(boundsHeight) || boundsHeight <= 0) return false;
+        if (!Number.isFinite(silhouetteRatio) || Math.abs(silhouetteRatio - Number((boundsWidth / boundsHeight).toFixed(4))) > 0.000001) return false;
+        var modelRatio = Number(fit.projected_model_box.width_height_ratio);
+        var jointFit = fit.joint_reprojection;
+        var anchors = jointFit && Array.isArray(jointFit.anchors) ? jointFit.anchors : [];
+        var anchorIndexes = jointFit && Array.isArray(jointFit.anchor_indexes) ? jointFit.anchor_indexes : [];
+        if (!jointFit || jointFit.source !== 'anatomy_parametric_3d_anchors_vs_mediapipe_2d_keypoints') return false;
+        if (jointFit.status !== 'measured' || jointFit.projection !== 'orthographic_fixed_camera_angle') return false;
+        if (jointFit.view_name !== record.view_name || Number(jointFit.angle) !== Number(record.angle)) return false;
+        if (jointFit.generated_from_mock !== false || ['direct', 'mirrored'].indexOf(jointFit.x_alignment) < 0) return false;
+        if (anchors.length < 8 || anchors.length !== anchorIndexes.length || jointFit.anchor_count !== anchors.length) return false;
+        var squaredJointError = 0;
+        for (var anchorIndex = 0; anchorIndex < anchors.length; anchorIndex += 1) {
+          var anchor = anchors[anchorIndex];
+          var observed = anchor && anchor.observed;
+          var projected = anchor && anchor.projected;
+          var values = [observed && observed.x, observed && observed.y, projected && projected.x, projected && projected.y, anchor && anchor.error].map(Number);
+          if (anchorIndexes[anchorIndex] !== (anchor && anchor.index) || values.some(function(value) { return !Number.isFinite(value); })) return false;
+          var measuredError = Math.hypot(values[0] - values[2], values[1] - values[3]);
+          if (Math.abs(values[4] - Number(measuredError.toFixed(5))) > 0.00002) return false;
+          squaredJointError += measuredError * measuredError;
+        }
+        var measuredJointRmse = Number(Math.sqrt(squaredJointError / anchors.length).toFixed(4));
+        if (Math.abs(Number(jointFit.rmse) - measuredJointRmse) > 0.0002) return false;
+        if (Math.abs(Number(fit.keypoint_reprojection_error) - measuredJointRmse) > 0.0002) return false;
+        var silhouetteFit = fit.silhouette_reprojection;
+        var crossSections = silhouetteFit && Array.isArray(silhouetteFit.cross_sections) ? silhouetteFit.cross_sections : [];
+        if (!silhouetteFit || silhouetteFit.source !== 'mediapipe_mask_horizontal_cross_sections_vs_anatomy_body_projection') return false;
+        if (silhouetteFit.status !== 'measured' || silhouetteFit.projection !== 'orthographic_fixed_camera_angle') return false;
+        if (silhouetteFit.view_name !== record.view_name || Number(silhouetteFit.angle) !== Number(record.angle)) return false;
+        if (silhouetteFit.mask_sha256 !== silhouette.mask_sha256 || silhouetteFit.generated_from_mock !== false) return false;
+        if (crossSections.length < 4 || silhouetteFit.cross_section_count !== crossSections.length) return false;
+        var squaredSilhouetteError = 0;
+        for (var sectionIndex = 0; sectionIndex < crossSections.length; sectionIndex += 1) {
+          var section = crossSections[sectionIndex];
+          var observedWidth = Number(section && section.observed_width_height_ratio);
+          var projectedWidth = Number(section && section.projected_width_height_ratio);
+          var storedError = Number(section && section.error);
+          if (![observedWidth, projectedWidth, storedError].every(Number.isFinite)) return false;
+          if (Number(section && section.observed_width_px) <= 0 || Number(section && section.sampled_row_count) <= 0) return false;
+          var measuredSectionError = Math.abs(observedWidth - projectedWidth);
+          if (Math.abs(storedError - Number(measuredSectionError.toFixed(5))) > 0.00002) return false;
+          squaredSilhouetteError += measuredSectionError * measuredSectionError;
+        }
+        var measuredSilhouetteRmse = Number(Math.sqrt(squaredSilhouetteError / crossSections.length).toFixed(4));
+        if (Math.abs(Number(silhouetteFit.rmse) - measuredSilhouetteRmse) > 0.0002) return false;
+        if (Math.abs(Number(fit.silhouette_reprojection_error) - measuredSilhouetteRmse) > 0.0002) return false;
+        if (!Array.isArray(fit.source_keypoint_indexes) || fit.source_keypoint_indexes.length < 8) return false;
+        if (fit.source_keypoint_count !== fit.source_keypoint_indexes.length) return false;
+        var confidenceSummary = fit.source_keypoint_confidence_summary;
+        if (!confidenceSummary || typeof confidenceSummary !== 'object' || Array.isArray(confidenceSummary)) return false;
+        if (confidenceSummary.source !== 'mediapipe_visible_keypoints') return false;
+        if (confidenceSummary.confidence_threshold !== 0.35 || confidenceSummary.count !== fit.source_keypoint_count) return false;
+        if (!adminFiniteProjectionError(confidenceSummary.min) || !adminFiniteProjectionError(confidenceSummary.mean)) return false;
+        if (Number(confidenceSummary.min) < 0.35 || Number(confidenceSummary.mean) < 0.35) return false;
+        return typeof fit.source_keypoint_coordinate_hash === 'string'
+          && fit.source_keypoint_coordinate_hash.length === 64
+          && ['source_keypoint_count', 'source_keypoint_indexes', 'source_keypoint_confidence_summary', 'source_keypoint_coordinate_hash'].every(function(field) {
+            return JSON.stringify(fit[field]) === JSON.stringify(fittingRecord[field]);
+          });
+      });
+    }
+
+    function hasFormalModelProjectionArtifact(report) {
+      var sourceData = report && report.sourceData;
+      var integrity = report && report.modelProjectionIntegrity;
+      var summary = report && report.modelProjectionSummary;
+      var pipeline = report && report.modelPipeline;
+      if (!report || !sourceData || !report.modelProjectionSummaryUrl || !integrity || !summary || !pipeline) return false;
+      if (normalizeAdminArtifactUrl(sourceData.model_projection_summary_url) !== normalizeAdminArtifactUrl(report.modelProjectionSummaryUrl)) return false;
+      if (JSON.stringify(sourceData.model_projection_integrity || {}) !== JSON.stringify(integrity || {})) return false;
+      if (summary.generated_from_mock !== false || summary.view_count !== 8 || summary.complete_view_count !== 8) return false;
+      if (summary.provider !== 'AnatomyParametricBodyProvider' || summary.projection_stage !== 'fixed_camera_model_projection') return false;
+      if (summary.projection_method !== 'parametric_body_fixed_camera_projection_summary') return false;
+      if (!Array.isArray(summary.records) || summary.records.length !== 8) return false;
+      if (!hasFormalProjectionFitEvidence(summary, report.modelFitting)) return false;
+      if (pipeline.projection_summary !== summary) return false;
+      return normalizeAdminArtifactUrl(integrity.url) === normalizeAdminArtifactUrl(report.modelProjectionSummaryUrl)
+        && typeof integrity.sha256 === 'string'
+        && integrity.sha256.length === 64
+        && Number(integrity.size) > 0;
+    }
+
+    function hasFormalModelSourceSummary(report) {
+      var pipeline = report && report.modelPipeline;
+      var sourceSummary = pipeline && pipeline.source_summary;
+      var sourceData = report && report.sourceData;
+      var requiredViews = Object.keys(REQUIRED_ADMIN_VIEW_ANGLES);
+      if (!sourceSummary || sourceSummary.generated_from_mock !== false) return false;
+      if (sourceSummary.source !== 'eight_view_keypoints_masks_customer_profile') return false;
+      if (JSON.stringify(sourceData && sourceData.model_source_summary || {}) !== JSON.stringify(sourceSummary || {})) return false;
+      if (!sameAdminSetValues(sourceSummary.required_views || [], requiredViews)) return false;
+      if (!sameAdminSetValues(sourceSummary.keypoint_view_names || [], requiredViews)) return false;
+      if (!sameAdminSetValues(sourceSummary.mask_view_names || [], requiredViews)) return false;
+      if (sourceSummary.view_count !== 8 || sourceSummary.mask_count !== 8) return false;
+      if (sourceSummary.metric_count !== formalReportMetrics(report).length) return false;
+      var records = Array.isArray(sourceSummary.view_records) ? sourceSummary.view_records : [];
+      if (records.length !== 8) return false;
+      var summaryByView = {};
+      records.forEach(function(record) {
+        if (record && record.view_name) summaryByView[record.view_name] = record;
+      });
+      var fittingByView = {};
+      (Array.isArray(report && report.modelFitting && report.modelFitting.fixed_camera_views) ? report.modelFitting.fixed_camera_views : []).forEach(function(record) {
+        if (record && record.view_name) fittingByView[record.view_name] = record;
+      });
+      var projectionByView = {};
+      (Array.isArray(report && report.modelProjectionSummary && report.modelProjectionSummary.records) ? report.modelProjectionSummary.records : []).forEach(function(record) {
+        if (record && record.view_name) projectionByView[record.view_name] = record;
+      });
+      var photoEvidenceByView = {};
+      normalizeAdminSourcePhotoEvidenceRecords(sourceData && sourceData.photo_evidence_records || []).forEach(function(record) {
+        if (record && record.view_name) photoEvidenceByView[record.view_name] = record;
+      });
+      return requiredViews.every(function(viewName) {
+        var record = summaryByView[viewName];
+        var fitting = fittingByView[viewName];
+        var projection = projectionByView[viewName];
+        var photoEvidence = photoEvidenceByView[viewName];
+        if (!record || !fitting || !projection || !photoEvidence) return false;
+        if (record.source !== 'fixed_view_customer_keypoints_and_mask') return false;
+        if (record.has_keypoints !== true || record.has_mask !== true) return false;
+        if (record.angle !== REQUIRED_ADMIN_VIEW_ANGLES[viewName]) return false;
+        if (record.angle !== fitting.angle || record.label !== fitting.label) return false;
+        if (record.keypoint_count !== fitting.keypoint_count || record.visible_keypoint_count !== fitting.visible_keypoint_count) return false;
+        if (normalizeAdminArtifactUrl(record.mask_url) !== normalizeAdminArtifactUrl(fitting.mask_url)) return false;
+        if (normalizeAdminArtifactUrl(record.mask_url) !== normalizeAdminArtifactUrl(projection.mask_url)) return false;
+        if (normalizeAdminArtifactUrl(record.mask_url) !== normalizeAdminArtifactUrl(photoEvidence.segmentation_mask_url)) return false;
+        var fit = projection.projection_fit || {};
+        var sourceFields = ['source_keypoint_count', 'source_keypoint_indexes', 'source_keypoint_confidence_summary', 'source_keypoint_coordinate_hash'];
+        if (!sourceFields.every(function(field) {
+          return JSON.stringify(record[field]) === JSON.stringify(fitting[field])
+            && JSON.stringify(record[field]) === JSON.stringify(fit[field]);
+        })) return false;
+        var confidenceSummary = record.source_keypoint_confidence_summary;
+        if (!confidenceSummary || confidenceSummary.source !== 'mediapipe_visible_keypoints') return false;
+        if (confidenceSummary.count !== record.source_keypoint_count) return false;
+        return typeof record.source_keypoint_coordinate_hash === 'string'
+          && record.source_keypoint_coordinate_hash.length === 64;
+      });
+    }
+
+    var REQUIRED_FORMAL_BODY_REGION_KEYS = [
+      'suboccipital', 'scalene', 'left_scm', 'right_scm', 'left_trap', 'right_trap',
+      'left_levator_scapulae', 'right_levator_scapulae', 'left_deltoid', 'right_deltoid',
+      'front_chain', 'left_pectoralis_minor', 'right_pectoralis_minor',
+      'left_medial_scapula', 'right_medial_scapula', 'left_ql', 'right_ql',
+      'left_iliopsoas', 'right_iliopsoas', 'left_glute_med', 'right_glute_med',
+      'left_quadriceps', 'right_quadriceps', 'left_hamstrings', 'right_hamstrings',
+      'left_it_band', 'right_it_band', 'left_knee', 'right_knee',
+      'left_gastrocnemius', 'right_gastrocnemius', 'left_ankle', 'right_ankle'
+    ];
+
+    function hasFormalBodyRegions(report) {
+      var regions = report && report.bodyRegions;
+      var rawBodyParams = report && report.bodyParams && report.bodyParams.rawBackendParams;
+      var expectedSourceSignature = report && report.modelPipeline && report.modelPipeline.body_regions_source_signature;
+      var metrics = formalReportMetrics(report);
+      var metricKeys = metrics.map(function(metric) { return metric && metric.metric_key; }).filter(Boolean);
+      var riskyMetricKeys = metrics.filter(function(metric) {
+        return metric && metric.reliable === true && metric.risk_level !== '\u6b63\u5e38';
+      }).map(function(metric) { return metric.metric_key; });
+      var correctionPlan = Array.isArray(report && report.correctionPlan) ? report.correctionPlan : [];
+      var correctionProblemKeys = {};
+      var correctionCoveredMetrics = {};
+      correctionPlan.forEach(function(item) {
+        if (item && item.problem_key) correctionProblemKeys[item.problem_key] = true;
+        (item && Array.isArray(item.related_metrics) ? item.related_metrics : []).forEach(function(metricKey) {
+          correctionCoveredMetrics[metricKey] = true;
+        });
+      });
+      if (!report || !report.modelRegionsUrl) return false;
+      if (typeof expectedSourceSignature !== 'string' || !/^[a-f0-9]{64}$/i.test(expectedSourceSignature)) return false;
+      if ((report.sourceData || {}).body_regions_source_signature !== expectedSourceSignature) return false;
+      if (!Array.isArray(regions) || regions.length < REQUIRED_FORMAL_BODY_REGION_KEYS.length) return false;
+      var regionByKey = {};
+      regions.forEach(function(region) {
+        if (region && region.key) regionByKey[region.key] = region;
+      });
+      var hasAllRequired = REQUIRED_FORMAL_BODY_REGION_KEYS.every(function(key) { return !!regionByKey[key]; });
+      if (!hasAllRequired) return false;
+      return regions.every(function(region) {
+        if (!region || !region.key || !region.name || !region.source || !region.sourceSignature || !region.risk || !region.riskColor || !region.riskColorRule || !region.problem || !region.concernReason || !region.suggestion || !region.correctionEntry) return false;
+        if (region.source !== 'formal_metrics_body_params_region_map' || region.sourceSignature !== expectedSourceSignature) return false;
+        if (!/^#[0-9a-fA-F]{6}$/.test(region.riskColor)) return false;
+        if (!Array.isArray(region.relatedMetrics) || region.relatedMetrics.length === 0) return false;
+        if (region.relatedMetrics.some(function(metricKey) { return metricKeys.indexOf(metricKey) < 0; })) return false;
+        if (['mild', 'medium', 'high'].indexOf(region.risk) >= 0) {
+          var regionRiskMetrics = region.relatedMetrics.filter(function(metricKey) { return riskyMetricKeys.indexOf(metricKey) >= 0; });
+          if (regionRiskMetrics.length === 0) return false;
+          var coveredByMetric = regionRiskMetrics.some(function(metricKey) { return correctionCoveredMetrics[metricKey] === true; });
+          if (!correctionProblemKeys[region.correctionEntry] && !coveredByMetric) return false;
+        }
+        var geometry = region.geometry || {};
+        if (geometry.shape !== 'ellipsoid') return false;
+        if (geometry.scale_with_height !== true) return false;
+        var geometryOk = ['x', 'y', 'z', 'rx', 'ry', 'rz'].every(function(field) {
+          var value = Number(geometry[field]);
+          if (!Number.isFinite(value)) return false;
+          return !(field === 'rx' || field === 'ry' || field === 'rz') || value > 0;
+        });
+        if (!geometryOk) return false;
+        var geometryBinding = region.geometryBinding || {};
+        if (geometryBinding.source !== 'body_params_scaled_metric_region_geometry') return false;
+        if (geometryBinding.uses_body_params !== true) return false;
+        var requiredGeometryParamFields = ['height_cm', 'shoulder_width', 'hip_width', 'body_depth', 'leg_length'];
+        if (!Array.isArray(geometryBinding.body_param_fields)) return false;
+        if (!requiredGeometryParamFields.every(function(field) { return geometryBinding.body_param_fields.indexOf(field) >= 0; })) return false;
+        if (!rawBodyParams || !geometryBinding.body_param_values || !geometryBinding.scale_ratios) return false;
+        if (!requiredGeometryParamFields.every(function(field) {
+          return geometryBinding.body_param_values[field] === rawBodyParams[field];
+        })) return false;
+        return ['height', 'shoulder_width', 'hip_width', 'body_depth', 'leg_length', 'lateral', 'vertical'].every(function(field) {
+          var ratio = Number(geometryBinding.scale_ratios[field]);
+          return Number.isFinite(ratio) && ratio > 0;
+        });
+      });
+    }
+
+    function hasFormalCorrectionPlan(report) {
+      var metrics = formalReportMetrics(report);
+      var plan = Array.isArray(report && report.correctionPlan) ? report.correctionPlan : [];
+      var riskyMetricKeys = metrics.filter(function(metric) {
+        return metric && metric.reliable === true && metric.risk_level !== '正常';
+      }).map(function(metric) { return metric.metric_key; });
+      var metricByKey = {};
+      metrics.forEach(function(metric) {
+        if (metric && metric.metric_key) metricByKey[metric.metric_key] = metric;
+      });
+      if (riskyMetricKeys.length === 0) return plan.length === 0;
+      if (plan.length === 0) return false;
+      var coveredMetrics = {};
+      var validPlan = plan.every(function(item) {
+        if (!item || item.generated_from_mock !== false) return false;
+        var requiredFields = ['problem_key', 'problem_name', 'related_metrics', 'source_metrics', 'correction_priority', 'possible_reason', 'goal', 'daily_steps', 'actions', 'frequency', 'precautions', 'retest', 'source', 'source_signature'];
+        var hasRequired = requiredFields.every(function(field) {
+          return !(item[field] == null || item[field] === '' || (Array.isArray(item[field]) && item[field].length === 0));
+        });
+        if (!hasRequired) return false;
+        if (item.source !== 'formal_metrics_correction_plan_item') return false;
+        if (typeof item.source_signature !== 'string' || !/^[a-f0-9]{64}$/i.test(item.source_signature)) return false;
+        if (['low', 'medium', 'high'].indexOf(item.correction_priority) < 0) return false;
+        var related = item.related_metrics || [];
+        if (related.some(function(metricKey) { return riskyMetricKeys.indexOf(metricKey) < 0; })) return false;
+        if (!Array.isArray(item.source_metrics) || item.source_metrics.length !== related.length) return false;
+        var sourceKeys = item.source_metrics.map(function(source) { return source && source.metric_key; }).filter(Boolean).sort().join('|');
+        if (sourceKeys !== related.slice().sort().join('|')) return false;
+        var sourceMatches = item.source_metrics.every(function(source) {
+          var metric = metricByKey[source.metric_key];
+          return !!metric && source.metric_name === metric.metric_name && source.risk_level === metric.risk_level;
+        });
+        if (!sourceMatches) return false;
+        if (!Array.isArray(item.daily_steps) || item.daily_steps.length < 2) return false;
+        if (!Array.isArray(item.actions) || item.actions.length < 2) return false;
+        var actionsValid = item.actions.every(function(action) {
+          return !!action && !!action.name && !!action.how_to && !!action.dosage && !!action.duration && !!action.attention;
+        });
+        if (!actionsValid) return false;
+        related.forEach(function(metricKey) { coveredMetrics[metricKey] = true; });
+        return true;
+      });
+      return validPlan && riskyMetricKeys.every(function(metricKey) { return coveredMetrics[metricKey]; });
+    }
+
+    function hasFormalNarrativeEvidence(report) {
+      var evidence = report && report.narrativeEvidence;
+      if (!evidence || evidence.generated_from_mock !== false || evidence.source !== 'formal_metrics_narrative_evidence') return false;
+      var metricByKey = {};
+      formalReportMetrics(report).forEach(function(metric) {
+        if (metric && metric.metric_key) metricByKey[metric.metric_key] = metric;
+      });
+      var sectionChecks = [
+        ['main_problems', report.mainFindings || []],
+        ['focus_areas', report.focusAreas || []],
+        ['zhengjin_suggestions', report.suggestions || []]
+      ];
+      var sectionsValid = sectionChecks.every(function(pair) {
+        var section = pair[0];
+        var texts = pair[1];
+        var records = Array.isArray(evidence[section]) ? evidence[section] : [];
+        if (records.length !== texts.length) return false;
+        return records.every(function(record, index) {
+          if (!record || record.generated_from_mock !== false || record.section !== section || record.source !== 'formal_metrics_narrative_section') return false;
+          if (record.text !== texts[index] || !record.derivation_rule || !Array.isArray(record.source_metrics)) return false;
+          return record.source_metrics.every(function(sourceMetric) {
+            var metric = sourceMetric && metricByKey[sourceMetric.metric_key];
+            return !!metric
+              && sourceMetric.metric_name === metric.metric_name
+              && sourceMetric.risk_level === metric.risk_level
+              && sourceMetric.reliable === metric.reliable;
+          });
+        });
+      });
+      if (!sectionsValid) return false;
+      var correctionPlan = Array.isArray(report && report.correctionPlan) ? report.correctionPlan : [];
+      var correctionRecords = Array.isArray(evidence.correction_plan) ? evidence.correction_plan : [];
+      if (correctionRecords.length !== correctionPlan.length) return false;
+      var planByKey = {};
+      correctionPlan.forEach(function(item) {
+        if (item && item.problem_key) planByKey[item.problem_key] = item;
+      });
+      return correctionRecords.every(function(record) {
+        var planItem = record && planByKey[record.problem_key];
+        if (!record || record.generated_from_mock !== false || record.section !== 'correction_plan' || record.source !== 'formal_metrics_correction_plan_item') return false;
+        if (!planItem || record.source_signature !== planItem.source_signature) return false;
+        var related = (planItem.related_metrics || []).slice().sort().join('|');
+        var riskKeys = (record.risk_metric_keys || []).slice().sort().join('|');
+        return related === riskKeys && Array.isArray(record.source_metrics) && record.source_metrics.length === (planItem.related_metrics || []).length;
+      });
+    }
+
+    function hasFormalBodyParamMaskEvidence(report) {
+      var params = report && report.bodyParams;
+      var raw = params && (params.rawBackendParams || params);
+      if (!raw || raw.proportion_source !== 'eight_view_keypoints_and_mediapipe_masks') return false;
+      var parameterEvidence = raw.proportion_evidence && raw.proportion_evidence.parameter_evidence;
+      if (!parameterEvidence || typeof parameterEvidence !== 'object') return false;
+      return ['shoulder_width', 'hip_width', 'body_depth'].every(function(key) {
+        var evidence = parameterEvidence[key];
+        if (!evidence || evidence.source !== 'eight_view_keypoints_and_mediapipe_masks') return false;
+        var measurements = Array.isArray(evidence.measurements) ? evidence.measurements : [];
+        var maskMeasurements = measurements.filter(function(item) {
+          return item && item.source_type === 'mediapipe_mask_cross_section';
+        });
+        if (!maskMeasurements.length) return false;
+        return maskMeasurements.every(function(item) {
+          var rawMeasurement = item.raw && typeof item.raw === 'object' ? item.raw : {};
+          var records = Array.isArray(rawMeasurement.sections) ? rawMeasurement.sections : [rawMeasurement];
+          return records.length > 0 && records.every(function(record) {
+            return record
+              && record.generated_from_mock === false
+              && record.source === 'mediapipe_pose_segmentation_mask_pixels'
+              && typeof record.mask_sha256 === 'string'
+              && record.mask_sha256.length === 64
+              && Number(record.section_width_pixels) > 0
+              && Number(record.foreground_body_height_pixels) > 0
+              && Number(record.width_height_ratio) > 0;
+          });
+        });
+      });
+    }
+
+    function isFormalAdminReport(report) {
+      if (!report || report.generated_from_mock !== false) return false;
+      if (report.formalReportSchemaVersion !== 'eight_view_posture_report.v1') return false;
+      if (!report.sourceData || report.sourceData.generated_from_mock !== false) return false;
+      if (typeof report.narrativeSourceSignature !== 'string' || !/^[a-f0-9]{64}$/i.test(report.narrativeSourceSignature)) return false;
+      if (report.sourceData.narrative_source_signature !== report.narrativeSourceSignature) return false;
+      if (!report.narrativeEvidenceUrl || !report.sourceData.narrative_evidence_url || normalizeAdminArtifactUrl(report.sourceData.narrative_evidence_url) !== normalizeAdminArtifactUrl(report.narrativeEvidenceUrl)) return false;
+      if (typeof report.photoSourceSignature !== 'string' || !/^[a-f0-9]{64}$/i.test(report.photoSourceSignature)) return false;
+      if (report.sourceData.photo_source_signature !== report.photoSourceSignature) return false;
+      if (!report.modelPipeline || report.modelPipeline.photo_source_signature !== report.photoSourceSignature) return false;
+      if (typeof report.customerSourceSignature !== 'string' || !/^[a-f0-9]{64}$/i.test(report.customerSourceSignature)) return false;
+      if (report.sourceData.customer_source_signature !== report.customerSourceSignature) return false;
+      if (!report.modelPipeline || report.modelPipeline.customer_source_signature !== report.customerSourceSignature) return false;
+      if (typeof report.bodyParamsSourceSignature !== 'string' || !/^[a-f0-9]{64}$/i.test(report.bodyParamsSourceSignature)) return false;
+      if (report.sourceData.body_params_source_signature !== report.bodyParamsSourceSignature) return false;
+      if (!report.modelPipeline || report.modelPipeline.body_params_source_signature !== report.bodyParamsSourceSignature) return false;
+      if (typeof report.modelSourceSignature !== 'string' || !/^[a-f0-9]{64}$/i.test(report.modelSourceSignature)) return false;
+      if (report.sourceData.model_source_signature !== report.modelSourceSignature) return false;
+      if (!report.modelPipeline || report.modelPipeline.model_source_signature !== report.modelSourceSignature) return false;
+      if (typeof report.analysisEvidenceSourceSignature !== 'string' || !/^[a-f0-9]{64}$/i.test(report.analysisEvidenceSourceSignature)) return false;
+      if (report.sourceData.analysis_evidence_source_signature !== report.analysisEvidenceSourceSignature) return false;
+      if (!report.modelPipeline || report.modelPipeline.analysis_evidence_source_signature !== report.analysisEvidenceSourceSignature) return false;
+      if (report.sourceData.photo_count !== 8 || report.sourceData.keypoint_view_count !== 8 || report.sourceData.analysis_evidence_count !== 8) return false;
+      if (!Array.isArray(report.photos) || report.photos.length !== 8) return false;
+      if (!Array.isArray(report.analysisEvidenceRecords) || report.analysisEvidenceRecords.length !== 8) return false;
+      if (!hasFormalAnalysisImages(report)) return false;
+      if (!hasFormalAnalysisEvidenceRecords(report)) return false;
+      if (!hasFormalTraceablePhotos(report)) return false;
+      if (!hasFormalSourcePhotoEvidenceRecords(report)) return false;
+      if (formalReportMetrics(report).length < 10) return false;
+      if (!hasFormalMetricEvidence(report)) return false;
+      if (!hasFormalScoringSource(report)) return false;
+      if (!hasFormalNarrativeEvidence(report)) return false;
+      if (!report.bodyParams || report.bodyParams.generated_from_mock !== false) return false;
+      if (!hasFormalBodyParamMaskEvidence(report)) return false;
+      if (!hasFormalBodyDeformationEvidenceAgainstMetrics(report)) return false;
+      if (!report.modelFitting || report.modelFitting.generated_from_mock !== false || report.modelFitting.provider !== 'AnatomyParametricBodyProvider') return false;
+      if (report.modelFitting.fitting_stage !== 'anatomy_parametric_body_fit') return false;
+      if (report.modelFitting.constraint_status !== 'applied') return false;
+      if (report.modelFitting.view_count !== 8 || report.modelFitting.required_view_count !== 8 || report.modelFitting.mask_count !== 8) return false;
+      if (!hasFormalModelFittingDeformationEvidence(report)) return false;
+      if (!report.modelObjUrl || !report.modelManifestUrl || !report.modelFittingUrl || !report.modelProjectionSummaryUrl || !report.analysisEvidenceUrl) return false;
+      if (!hasFormalReportArtifactUrls(report)) return false;
+      if (!hasFormalReportArtifactIntegrity(report)) return false;
+      if (!hasFormalCustomerInfoArtifact(report)) return false;
+      if (!hasFormalPhotoQualityArtifact(report)) return false;
+      if (!hasFormalPoseSegmentationArtifact(report)) return false;
+      if (!hasFormalAnalysisEvidenceArtifact(report)) return false;
+      if (!hasFormalModelProjectionArtifact(report)) return false;
+      if (!hasFormalModelSourceSummary(report)) return false;
+      if (!hasFormalModelArtifactIntegrity(report)) return false;
+      if (!hasFormalBodyRegions(report)) return false;
+      if (!hasFormalCorrectionPlan(report)) return false;
+      return true;
+    }
+
+    function getReports() {
+      var reports = JSON.parse(localStorage.getItem('ai_posture_reports') || '[]');
+      return reports.filter(isFormalAdminReport);
+    }
+
+    function getAllChallenges() {
+      // 从 localStorage 中读取所有 ai_posture_data_{phone} 或当前 ai_posture_data
+      // 由于当前架构每个手机号共享 ai_posture_data，需要兼容
+      var challenges = [];
+      // 从用户列表获取手机号，然后尝试读取各自的数据
+      var users = getUsers();
+      if (users.length > 0) {
+        users.forEach(function(user) {
+          var data = JSON.parse(localStorage.getItem('ai_posture_data') || '{}');
+          if (data && data.activeChallenge) {
+            challenges.push({
+              phone: user.phone,
+              challenge: data.activeChallenge
+            });
+          }
+        });
+      } else {
+        // 兼容：无用户列表时读取当前数据
+        var data = JSON.parse(localStorage.getItem('ai_posture_data') || '{}');
+        if (data && data.activeChallenge) {
+          var currentUser = JSON.parse(localStorage.getItem('ai_posture_user') || '{}');
+          challenges.push({
+            phone: currentUser.phone || '未知',
+            challenge: data.activeChallenge
+          });
+        }
+      }
+      return challenges;
+    }
+
+    // ===== 刷新所有数据 =====
+    function refreshAllData() {
+      refreshDashboard();
+      renderUsers();
+      renderReports();
+      renderChallenges();
+    }
+
+    // ===== 格式化时间 =====
+    function formatDate(isoStr) {
+      if (!isoStr) return '--';
+      try {
+        var d = new Date(isoStr);
+        return d.getFullYear() + '-' +
+          String(d.getMonth() + 1).padStart(2, '0') + '-' +
+          String(d.getDate()).padStart(2, '0') + ' ' +
+          String(d.getHours()).padStart(2, '0') + ':' +
+          String(d.getMinutes()).padStart(2, '0');
+      } catch(e) {
+        return '--';
+      }
+    }
+
+    function formatDateShort(isoStr) {
+      if (!isoStr) return '--';
+      try {
+        var d = new Date(isoStr);
+        return (d.getMonth() + 1) + '/' + d.getDate();
+      } catch(e) {
+        return '--';
+      }
+    }
+
+    // ===== 脱敏手机号 =====
+    function maskPhone(phone) {
+      if (!phone || phone.length < 7) return phone || '--';
+      return phone.substring(0, 3) + '****' + phone.substring(7);
+    }
+
+    // ===== Dashboard 渲染 =====
+    function refreshDashboard() {
+      var users = getUsers();
+      var reports = getReports();
+      var challenges = getAllChallenges();
+
+      // 统计卡片
+      var totalUsers = users.length;
+      var today = new Date().toISOString().split('T')[0];
+      var todayNew = users.filter(function(u) {
+        return u.registeredAt && u.registeredAt.startsWith(today);
+      }).length;
+      var activeChallenges = challenges.filter(function(c) {
+        return c.challenge && c.challenge.status === 'active';
+      }).length;
+      var avgScore = '--';
+      if (reports.length > 0) {
+        var sum = reports.reduce(function(a, r) { return a + (r.score || 0); }, 0);
+        avgScore = (sum / reports.length).toFixed(1);
+      }
+
+      document.getElementById('statTotalUsers').textContent = totalUsers;
+      document.getElementById('statTodayNew').textContent = todayNew;
+      document.getElementById('statActiveChallenges').textContent = activeChallenges;
+      document.getElementById('statAvgScore').textContent = avgScore;
+
+      document.getElementById('statTotalUsersChange').textContent = '注册用户';
+      document.getElementById('statTodayNewChange').textContent = today;
+      document.getElementById('statActiveChallengesChange').textContent = '进行中的挑战';
+      document.getElementById('statAvgScoreChange').textContent = '共 ' + reports.length + ' 份报告';
+
+      // 近7日趋势柱状图 - 新增用户
+      renderTrendBar('trendUsersBar', 'trendUsersLabels', function(date) {
+        return users.filter(function(u) {
+          return u.registeredAt && u.registeredAt.startsWith(date);
+        }).length;
+      });
+
+      // 近7日趋势柱状图 - 评估报告
+      renderTrendBar('trendReportsBar', 'trendReportsLabels', function(date) {
+        return reports.filter(function(r) {
+          return r.date && r.date.startsWith(date);
+        }).length;
+      });
+
+      // 汇总统计
+      var totalChecked = challenges.reduce(function(a, c) {
+        return a + (c.challenge ? (c.challenge.checkedDays || 0) : 0);
+      }, 0);
+      var totalMissed = challenges.reduce(function(a, c) {
+        return a + (c.challenge ? (c.challenge.dailyRecords || []).filter(function(r) { return r.status === 'missed'; }).length : 0);
+      }, 0);
+      var completedChallenges = challenges.filter(function(c) {
+        return c.challenge && c.challenge.status === 'completed';
+      }).length;
+
+      var totalScore = reports.reduce(function(a, r) { return a + (r.score || 0); }, 0);
+      var highScore = reports.length > 0 ? Math.max.apply(null, reports.map(function(r) { return r.score || 0; })) : '--';
+      var lowScore = reports.length > 0 ? Math.min.apply(null, reports.map(function(r) { return r.score || 0; })) : '--';
+
+      // 问题分布
+      var issueCount = {};
+      reports.forEach(function(r) {
+        (r.issues || []).forEach(function(issue) {
+          issueCount[issue] = (issueCount[issue] || 0) + 1;
+        });
+      });
+      var topIssues = Object.entries(issueCount).sort(function(a, b) { return b[1] - a[1]; }).slice(0, 5);
+
+      document.getElementById('trendSummary').innerHTML =
+        '<div class="trend-summary-item"><div class="num">' + reports.length + '</div><div class="label">总报告数</div></div>' +
+        '<div class="trend-summary-item"><div class="num">' + highScore + '</div><div class="label">最高评分</div></div>' +
+        '<div class="trend-summary-item"><div class="num">' + lowScore + '</div><div class="label">最低评分</div></div>' +
+        '<div class="trend-summary-item"><div class="num">' + totalChecked + '</div><div class="label">总打卡天数</div></div>' +
+        '<div class="trend-summary-item"><div class="num">' + totalMissed + '</div><div class="label">总缺卡次数</div></div>' +
+        '<div class="trend-summary-item"><div class="num">' + completedChallenges + '</div><div class="label">已完成挑战</div></div>' +
+        (topIssues.length > 0 ?
+          '<div style="grid-column: span 2; margin-top: 8px; padding-top: 12px; border-top: 1px solid var(--border-color); width: 100%;">' +
+            '<div style="font-size: 11px; color: var(--text-tertiary); font-weight: 600; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.04em;">高频问题 TOP 5</div>' +
+            '<div class="detail-tags">' +
+              topIssues.map(function(item) {
+                return '<span class="detail-tag">' + item[0] + ' (' + item[1] + ')</span>';
+              }).join('') +
+            '</div>' +
+          '</div>' : ''
+        );
+    }
+
+    // 渲染趋势柱状图
+    function renderTrendBar(barId, labelsId, countFn) {
+      var barContainer = document.getElementById(barId);
+      var labelsContainer = document.getElementById(labelsId);
+      var days = [];
+      var values = [];
+
+      for (var i = 6; i >= 0; i--) {
+        var d = new Date();
+        d.setDate(d.getDate() - i);
+        var dateStr = d.toISOString().split('T')[0];
+        var label = (d.getMonth() + 1) + '/' + d.getDate();
+        days.push(label);
+        values.push(countFn(dateStr));
+      }
+
+      var maxVal = Math.max.apply(null, values) || 1;
+
+      barContainer.innerHTML = values.map(function(val, idx) {
+        var h = Math.max(4, (val / maxVal) * 76);
+        var isActive = idx === values.length - 1;
+        return '<div class="trend-bar' + (isActive ? ' active' : '') + '" style="height:' + h + 'px" data-val="' + val + '"></div>';
+      }).join('');
+
+      labelsContainer.innerHTML = days.map(function(day) {
+        return '<span>' + day + '</span>';
+      }).join('');
+    }
+
+    // ===== 顾客管理渲染 =====
+    function renderUsers() {
+      var users = getUsers();
+      var search = (document.getElementById('userSearch').value || '').trim();
+      var statusFilter = document.getElementById('userStatusFilter').value;
+
+      var filtered = users.filter(function(u) {
+        var matchSearch = !search || u.phone.includes(search);
+        var matchStatus = statusFilter === 'all' ||
+          (statusFilter === 'active' && !u.disabled) ||
+          (statusFilter === 'disabled' && u.disabled);
+        return matchSearch && matchStatus;
+      });
+
+      var tbody = document.getElementById('usersTableBody');
+      var emptyEl = document.getElementById('usersEmpty');
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = '';
+        emptyEl.style.display = 'block';
+        return;
+      }
+
+      emptyEl.style.display = 'none';
+      tbody.innerHTML = filtered.map(function(user, idx) {
+        var masked = maskPhone(user.phone);
+        var statusTag = user.disabled
+          ? '<span class="tag tag-danger">已禁用</span>'
+          : '<span class="tag tag-success">正常</span>';
+        var toggleText = user.disabled ? '启用' : '禁用';
+        var toggleClass = user.disabled ? 'btn-sm success' : 'btn-sm danger';
+
+        return '<tr>' +
+          '<td class="mono">' + masked + '</td>' +
+          '<td>' + formatDate(user.registeredAt) + '</td>' +
+          '<td>' + formatDate(user.lastLoginAt) + '</td>' +
+          '<td>' + statusTag + '</td>' +
+          '<td>' +
+            '<button class="btn-sm primary" onclick="toggleUserDetail(\'' + idx + '\')">查看详情</button> ' +
+            '<button class="' + toggleClass + '" onclick="toggleUserStatus(\'' + idx + '\')">' + toggleText + '</button>' +
+          '</td>' +
+        '</tr>' +
+        (function() {
+          // 查找该用户的所有报告
+          var allReports = getReports();
+          var userReports = allReports.filter(function(r) { return r.phone === user.phone; });
+          var reportHtml = '';
+          if (userReports.length > 0) {
+            reportHtml += '<div class="detail-section-title">📋 评估报告（' + userReports.length + ' 份）</div>' +
+              '<div style="display:flex;flex-direction:column;gap:10px;margin-top:12px;">';
+            userReports.forEach(function(r, ri) {
+              var sColor = r.score >= 80 ? 'var(--success)' : r.score >= 60 ? 'var(--warning)' : 'var(--danger)';
+              var sText = r.score >= 80 ? '良好' : r.score >= 60 ? '一般' : '需改善';
+              var photoCount = r.photos ? Object.keys(r.photos).length : 0;
+              var actionCount = r.actionResults ? r.actionResults.filter(function(a) { return a.completed; }).length : 0;
+              var totalActions = r.actionResults ? r.actionResults.length : 0;
+              reportHtml += '<div style="background:rgba(255,255,255,0.03);border-radius:10px;padding:14px 16px;border:1px solid rgba(255,255,255,0.08);cursor:pointer;" onclick="this.nextElementSibling.classList.toggle(\'show\')">' +
+                '<div style="display:flex;align-items:center;justify-content:space-between;">' +
+                '<div style="display:flex;align-items:center;gap:12px;">' +
+                '<div style="width:40px;height:40px;border-radius:50%;background:' + sColor + ';color:#0a0a0f;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px;">' + r.score + '</div>' +
+                '<div>' +
+                '<div style="font-size:14px;font-weight:600;">' + formatDate(r.date) + '</div>' +
+                '<div style="font-size:11px;color:var(--text-tertiary);margin-top:2px;">' + (r.issues?.length || 0) + ' 项问题 · ' + photoCount + ' 张照片 · ' + actionCount + '/' + totalActions + ' 动作</div>' +
+                '</div></div>' +
+                '<span style="font-size:12px;color:' + sColor + ';font-weight:600;">' + sText + '</span>' +
+                '</div></div>' +
+                // 展开的子详情
+                '<div class="detail-panel" style="margin-top:6px;padding:12px;">' +
+                // 个人信息
+                '<div style="font-size:12px;color:var(--text-tertiary);margin-bottom:8px;">📝 个人信息</div>' +
+                '<div class="detail-grid">' +
+                '<div class="detail-item"><div class="detail-item-label">姓名</div><div class="detail-item-value">' + (r.personalInfo?.name || r.name || '未填写') + '</div></div>' +
+                '<div class="detail-item"><div class="detail-item-label">生日</div><div class="detail-item-value">' + (r.personalInfo?.birthday || '未填写') + '</div></div>' +
+                '<div class="detail-item"><div class="detail-item-label">身高</div><div class="detail-item-value mono">' + (r.personalInfo?.height ? r.personalInfo.height + ' cm' : '未填写') + '</div></div>' +
+                '<div class="detail-item"><div class="detail-item-label">体重</div><div class="detail-item-value mono">' + (r.personalInfo?.weight ? r.personalInfo.weight + ' kg' : '未填写') + '</div></div>' +
+                '<div class="detail-item"><div class="detail-item-label">运动频率</div><div class="detail-item-value">' + (r.personalInfo?.exercise || '未选择') + '</div></div>' +
+                '</div>' +
+                // 体态照片
+                (function() {
+                  var photos = r.photos || {};
+                  var ids = Object.keys(photos);
+                  var names = { front: '正面', back: '背面', left: '左侧', right: '右侧', '45-left': '左前45°', '45-right': '右前45°', '45-left-back': '左后45°', '45-right-back': '右后45°' };
+                  if (ids.length === 0) return '';
+                  var h = '<div style="font-size:12px;color:var(--text-tertiary);margin:12px 0 8px;">📸 体态照片（' + ids.length + ' / 8）</div>' +
+                    '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:8px;">';
+                  ids.forEach(function(pid) {
+                    h += '<div style="text-align:center;">' +
+                      '<img src="' + photos[pid] + '" style="width:100%;aspect-ratio:3/4;object-fit:cover;border-radius:6px;border:1px solid rgba(255,255,255,0.1);cursor:pointer;" onclick="window.open(this.src)">' +
+                      '<div style="font-size:10px;color:var(--text-tertiary);margin-top:4px;">' + (names[pid] || pid) + '</div>' +
+                      '</div>';
+                  });
+                  return h + '</div>';
+                })() +
+                // 动作评估
+                (function() {
+                  var actions = r.actionResults || [];
+                  if (actions.length === 0) return '';
+                  var h = '<div style="font-size:12px;color:var(--text-tertiary);margin:12px 0 8px;">🏃 动作评估</div>' +
+                    '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:6px;">';
+                  actions.forEach(function(a) {
+                    h += '<div style="background:rgba(255,255,255,0.03);border-radius:6px;padding:8px 10px;border:1px solid ' + (a.completed ? 'var(--success)' : 'rgba(255,255,255,0.06)') + ';">' +
+                      '<div style="font-size:12px;font-weight:600;">' + a.name + '</div>' +
+                      '<div style="font-size:10px;color:var(--text-tertiary);">' + a.targets + '</div>' +
+                      '<div style="font-size:10px;margin-top:3px;">' + (a.completed ? '<span style="color:var(--success);">✓</span>' : '<span style="color:var(--text-tertiary);">○</span>') + '</div>' +
+                      '</div>';
+                  });
+                  return h + '</div>';
+                })() +
+                // 问题与文字描述
+                ((r.issues || []).length > 0 ? '<div style="font-size:12px;color:var(--text-tertiary);margin:12px 0 8px;">⚠️ 发现问题</div><div class="detail-tags">' + r.issues.map(function(iss) { return '<span class="detail-tag">' + iss + '</span>'; }).join('') + '</div>' : '') +
+                (r.personalInfo?.habits ? '<div style="font-size:12px;color:var(--text-tertiary);margin:12px 0 4px;">📝 生活习惯</div><div class="detail-text">' + escapeHtml(r.personalInfo.habits) + '</div>' : '') +
+                (r.personalInfo?.pain ? '<div style="font-size:12px;color:var(--text-tertiary);margin:12px 0 4px;">💢 不适部位</div><div class="detail-text">' + escapeHtml(r.personalInfo.pain) + '</div>' : '') +
+                (r.personalInfo?.selfIssue ? '<div style="font-size:12px;color:var(--text-tertiary);margin:12px 0 4px;">🔍 自觉体态问题</div><div class="detail-text">' + escapeHtml(r.personalInfo.selfIssue) + '</div>' : '') +
+                '</div>';
+            });
+            reportHtml += '</div>';
+          }
+          return '<tr class="detail-row"><td colspan="5">' +
+            '<div class="detail-panel" id="user-detail-' + idx + '">' +
+              '<div class="detail-grid">' +
+                '<div class="detail-item"><div class="detail-item-label">手机号</div><div class="detail-item-value mono">' + user.phone + '</div></div>' +
+                '<div class="detail-item"><div class="detail-item-label">注册时间</div><div class="detail-item-value">' + formatDate(user.registeredAt) + '</div></div>' +
+                '<div class="detail-item"><div class="detail-item-label">最后登录</div><div class="detail-item-value">' + formatDate(user.lastLoginAt) + '</div></div>' +
+                '<div class="detail-item"><div class="detail-item-label">账号状态</div><div class="detail-item-value">' + (user.disabled ? '已禁用' : '正常') + '</div></div>' +
+              '</div>' +
+              reportHtml +
+            '</div>' +
+          '</td></tr>';
+        })();
+      }).join('');
+    }
+
+    function filterUsers() {
+      renderUsers();
+    }
+
+    function toggleUserDetail(idx) {
+      var panel = document.getElementById('user-detail-' + idx);
+      if (panel) {
+        panel.classList.toggle('show');
+      }
+    }
+
+    function toggleUserStatus(idx) {
+      var users = getUsers();
+      if (users[idx]) {
+        users[idx].disabled = !users[idx].disabled;
+        localStorage.setItem('ai_posture_users', JSON.stringify(users));
+        renderUsers();
+      }
+    }
+
+    // ===== 评估报告渲染 =====
+    function renderReports() {
+      var reports = getReports();
+      var search = (document.getElementById('reportSearch').value || '').trim().toLowerCase();
+      var scoreFilter = document.getElementById('reportScoreFilter').value;
+
+      // 按时间倒序
+      var sorted = reports.slice().reverse();
+
+      var filtered = sorted.filter(function(r) {
+        var matchSearch = !search ||
+          (r.phone && r.phone.toLowerCase().includes(search)) ||
+          (r.name && r.name.toLowerCase().includes(search));
+        var matchScore = scoreFilter === 'all' ||
+          (scoreFilter === 'good' && r.score >= 80) ||
+          (scoreFilter === 'fair' && r.score >= 60 && r.score < 80) ||
+          (scoreFilter === 'poor' && r.score < 60);
+        return matchSearch && matchScore;
+      });
+
+      var tbody = document.getElementById('reportsTableBody');
+      var emptyEl = document.getElementById('reportsEmpty');
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = '';
+        emptyEl.style.display = 'block';
+        return;
+      }
+
+      emptyEl.style.display = 'none';
+      tbody.innerHTML = filtered.map(function(report, idx) {
+        var masked = maskPhone(report.phone);
+        var scoreText = report.scoreText || (report.score >= 80 ? '良好' : report.score >= 60 ? '一般' : '需改善');
+        var scoreTagClass = report.score >= 80 ? 'tag-success' : report.score >= 60 ? 'tag-warning' : 'tag-danger';
+        var issueCount = (report.issues || []).length;
+
+        // 评分环 SVG
+        var circumference = 2 * Math.PI * 34;
+        var offset = circumference - (report.score / 100) * circumference;
+        var strokeColor = report.score >= 80 ? 'var(--success)' : report.score >= 60 ? 'var(--warning)' : 'var(--danger)';
+
+        return '<tr>' +
+          '<td><div style="display:flex;align-items:center;gap:10px;">' +
+            '<div class="report-score-ring">' +
+              '<svg viewBox="0 0 80 80">' +
+                '<circle class="ring-bg" cx="40" cy="40" r="34"/>' +
+                '<circle class="ring-fill" cx="40" cy="40" r="34" ' +
+                  'stroke="' + strokeColor + '" ' +
+                  'stroke-dasharray="' + circumference + '" ' +
+                  'stroke-dashoffset="' + offset + '"/>' +
+              '</svg>' +
+              '<div class="report-score-num">' + report.score + '</div>' +
+            '</div>' +
+            '<div>' +
+              '<div style="font-weight:600;color:var(--text-primary);font-size:13px;">' + (report.name || '未填写') + '</div>' +
+              '<div class="mono" style="font-size:11px;color:var(--text-tertiary);">' + masked + '</div>' +
+            '</div>' +
+          '</div></td>' +
+          '<td>' + formatDate(report.date) + '</td>' +
+          '<td class="mono">' + report.score + '</td>' +
+          '<td><span class="tag ' + scoreTagClass + '">' + scoreText + '</span></td>' +
+          '<td>' +
+            (issueCount > 0
+              ? '<span class="tag tag-danger">' + issueCount + ' 项</span>'
+              : '<span class="tag tag-success">无</span>') +
+          '</td>' +
+          '<td><button class="btn-sm primary" onclick="toggleReportDetail(\'' + idx + '\')">查看详情</button></td>' +
+        '</tr>' +
+        '<tr class="detail-row"><td colspan="6">' +
+          '<div class="detail-panel" id="report-detail-' + idx + '">' +
+            // ========== 个人信息 ==========
+            '<div class="detail-section-title">📝 患者信息</div>' +
+            '<div class="detail-grid">' +
+              '<div class="detail-item"><div class="detail-item-label">姓名</div><div class="detail-item-value">' + (report.personalInfo?.name || report.profile?.name || report.name || '未填写') + '</div></div>' +
+              '<div class="detail-item"><div class="detail-item-label">手机号</div><div class="detail-item-value mono">' + (report.phone || '未填写') + '</div></div>' +
+              '<div class="detail-item"><div class="detail-item-label">年龄</div><div class="detail-item-value">' + (report.profile?.age || report.personalInfo?.age || '未填写') + ' 岁</div></div>' +
+              '<div class="detail-item"><div class="detail-item-label">生日</div><div class="detail-item-value">' + (report.personalInfo?.birthday || report.profile?.birthday || '未填写') + '</div></div>' +
+              '<div class="detail-item"><div class="detail-item-label">身高</div><div class="detail-item-value mono">' + (report.profile?.height || report.personalInfo?.height ? (report.profile?.height || report.personalInfo?.height) + ' cm' : '未填写') + '</div></div>' +
+              '<div class="detail-item"><div class="detail-item-label">体重</div><div class="detail-item-value mono">' + (report.profile?.weight || report.personalInfo?.weight ? (report.profile?.weight || report.personalInfo?.weight) + ' kg' : '未填写') + '</div></div>' +
+              '<div class="detail-item"><div class="detail-item-label">运动频率</div><div class="detail-item-value">' + (report.personalInfo?.exercise || '未选择') + '</div></div>' +
+              '<div class="detail-item"><div class="detail-item-label">评估时间</div><div class="detail-item-value">' + formatDate(report.analyzedAt || report.date) + '</div></div>' +
+            '</div>' +
+            // ========== 体态照片 ==========
+            (function() {
+              var photos = report.photos || {};
+              var photoIds = Object.keys(photos);
+              var angleNames = { front: '正面', back: '背面', left: '左侧', right: '右侧', '45-left': '左前45°', '45-right': '右前45°', '45-left-back': '左后45°', '45-right-back': '右后45°' };
+              if (photoIds.length === 0) return '';
+              var h = '<div class="detail-section-title">📸 体态照片（' + photoIds.length + ' / 8）</div>' +
+                '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:12px;margin-top:12px;">';
+              photoIds.forEach(function(pid) {
+                var label = angleNames[pid] || pid;
+                var quality = (report.photoQuality && report.photoQuality[pid]);
+                var qualityBadge = quality ? '<div style="font-size:10px;margin-top:2px;color:' + (quality.valid ? 'var(--success)' : 'var(--warning)') + ';">' + (quality.valid ? '质量合格' : quality.message || '质量不佳') + '</div>' : '';
+                h += '<div style="text-align:center;">' +
+                  '<img src="' + photos[pid] + '" style="width:100%;aspect-ratio:3/4;object-fit:cover;border-radius:8px;border:1px solid rgba(255,255,255,0.1);cursor:pointer;" onclick="window.open(this.src)" title="点击放大查看">' +
+                  '<div style="font-size:11px;color:var(--text-tertiary);margin-top:6px;">' + label + '</div>' +
+                  qualityBadge +
+                  '</div>';
+              });
+              h += '</div>';
+              return h;
+            })() +
+            // ========== 照片分析图 ==========
+            (function() {
+              var imgs = report.analysisImages || {};
+              var keys = Object.keys(imgs);
+              if (keys.length === 0) return '';
+              var nameMap = { front_analysis: '正面分析', back_analysis: '背面分析', left_side_analysis: '左侧分析', right_side_analysis: '右侧分析', front_landmarks: '正面骨骼标注', back_landmarks: '背面骨骼标注', left_landmarks: '左侧骨骼标注', right_landmarks: '右侧骨骼标注', front_segmentation: '正面分割', back_segmentation: '背面分割' };
+              var h = '<div class="detail-section-title">🔬 照片分析图（' + keys.length + ' 张）</div>' +
+                '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px;margin-top:12px;">';
+              keys.forEach(function(k) {
+                var url = imgs[k];
+                if (!url || url === 'undefined') return;
+                var label = nameMap[k] || k.replace(/_/g, ' ');
+                h += '<div style="text-align:center;">' +
+                  '<img src="' + url + '" style="width:100%;aspect-ratio:3/4;object-fit:cover;border-radius:8px;border:1px solid rgba(56,189,248,0.2);cursor:pointer;" onclick="window.open(this.src)" title="点击放大查看">' +
+                  '<div style="font-size:11px;color:var(--primary-light);margin-top:6px;font-weight:500;">' + label + '</div>' +
+                  '</div>';
+              });
+              h += '</div>';
+              return h;
+            })() +
+            // ========== 分割掩码图 ==========
+            (function() {
+              var masks = report.segmentationMasks || {};
+              var keys = Object.keys(masks);
+              if (keys.length === 0) return '';
+              var nameMap = { front: '正面分割', back: '背面分割', left: '左侧分割', right: '右侧分割' };
+              var h = '<div class="detail-section-title">🧩 体型分割图（' + keys.length + ' 张）</div>' +
+                '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px;margin-top:12px;">';
+              keys.forEach(function(k) {
+                var url = masks[k];
+                if (!url || url === 'undefined') return;
+                h += '<div style="text-align:center;">' +
+                  '<img src="' + url + '" style="width:100%;aspect-ratio:3/4;object-fit:cover;border-radius:8px;border:1px solid rgba(255,255,255,0.1);cursor:pointer;" onclick="window.open(this.src)">' +
+                  '<div style="font-size:11px;color:var(--text-tertiary);margin-top:6px;">' + (nameMap[k] || k) + '</div>' +
+                  '</div>';
+              });
+              h += '</div>';
+              return h;
+            })() +
+            // ========== 3D 人体模型 ==========
+            (function() {
+              var hasModel = report.modelUrl || report.modelObjUrl || report.modelManifestUrl;
+              if (!hasModel) return '';
+              var h = '<div class="detail-section-title">🧬 三维人体模型</div>' +
+                '<div style="margin-top:12px;display:flex;flex-wrap:wrap;gap:10px;">';
+              if (report.modelUrl) {
+                h += '<a href="' + report.modelUrl + '" target="_blank" style="display:inline-flex;align-items:center;gap:6px;background:rgba(56,189,248,0.1);border:1px solid rgba(56,189,248,0.3);color:var(--primary-light);padding:10px 16px;border-radius:8px;font-size:12px;text-decoration:none;transition:background 0.2s;">🌐 查看三维模型（GLTF）</a>';
+              }
+              if (report.modelObjUrl) {
+                h += '<a href="' + report.modelObjUrl + '" target="_blank" style="display:inline-flex;align-items:center;gap:6px;background:rgba(56,189,248,0.1);border:1px solid rgba(56,189,248,0.3);color:var(--primary-light);padding:10px 16px;border-radius:8px;font-size:12px;text-decoration:none;">📦 下载模型文件（OBJ）</a>';
+              }
+              if (report.modelManifestUrl) {
+                h += '<a href="' + report.modelManifestUrl + '" target="_blank" style="display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);color:var(--text-secondary);padding:10px 16px;border-radius:8px;font-size:12px;text-decoration:none;">📋 模型清单</a>';
+              }
+              if (report.modelRegionsUrl) {
+                h += '<a href="' + report.modelRegionsUrl + '" target="_blank" style="display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);color:var(--text-secondary);padding:10px 16px;border-radius:8px;font-size:12px;text-decoration:none;">🗺️ 区域标注模型</a>';
+              }
+              if (report.analysisEvidenceUrl) {
+                h += '<a href="' + report.analysisEvidenceUrl + '" target="_blank" style="display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);color:var(--text-secondary);padding:10px 16px;border-radius:8px;font-size:12px;text-decoration:none;">📊 分析证据数据</a>';
+              }
+              h += '</div>';
+              return h;
+            })() +
+            // ========== 动作评估 ==========
+            (function() {
+              var actions = report.actionResults || [];
+              if (actions.length === 0) return '';
+              var completed = actions.filter(function(a) { return a.completed; }).length;
+              var h = '<div class="detail-section-title">🏃 动作评估（' + completed + ' / ' + actions.length + ' 项）</div>' +
+                '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px;margin-top:12px;">';
+              actions.forEach(function(a) {
+                h += '<div style="background:rgba(255,255,255,0.04);border-radius:8px;padding:10px 14px;border:1px solid ' + (a.completed ? 'var(--success)' : 'rgba(255,255,255,0.08)') + ';">' +
+                  '<div style="font-size:13px;font-weight:600;color:var(--text-primary);">' + a.name + '</div>' +
+                  '<div style="font-size:11px;color:var(--text-tertiary);margin-top:2px;">评估部位：' + (a.targets || '未指定') + '</div>' +
+                  '<div style="font-size:11px;margin-top:4px;">' + (a.completed ? '<span style="color:var(--success);">✓ 已完成评估</span>' : '<span style="color:var(--text-tertiary);">○ 未评估</span>') + '</div>' +
+                  '</div>';
+              });
+              h += '</div>';
+              return h;
+            })() +
+            // ========== 体态指标详细表格（后端 metrics 格式）==========
+            (function() {
+              var metrics = formalReportMetrics(report);
+              if (metrics.length === 0) {
+                return '';
+                // 兼容旧版 postureMetrics 对象格式
+                var pm = report.postureMetrics || {};
+                var pmKeys = Object.keys(pm);
+                if (pmKeys.length === 0) return '';
+                var h = '<div class="detail-section-title">📐 体态指标</div>' +
+                  '<div style="overflow-x:auto;margin-top:12px;">' +
+                  '<table style="width:100%;border-collapse:collapse;font-size:12px;">' +
+                  '<thead><tr style="border-bottom:1px solid rgba(255,255,255,0.1);">' +
+                  '<th style="text-align:left;padding:8px 12px;color:var(--text-tertiary);font-weight:500;">指标名称</th>' +
+                  '<th style="text-align:right;padding:8px 12px;color:var(--text-tertiary);font-weight:500;">测量值</th>' +
+                  '<th style="text-align:center;padding:8px 12px;color:var(--text-tertiary);font-weight:500;">正常范围</th>' +
+                  '<th style="text-align:center;padding:8px 12px;color:var(--text-tertiary);font-weight:500;">风险等级</th>' +
+                  '</tr></thead><tbody>';
+                pmKeys.forEach(function(k) {
+                  var v = pm[k];
+                  var label = { headForward: '头前伸', shoulderHeightDiff: '肩高差', shoulderAngleDiff: '肩角差', pelvisTilt: '骨盆倾斜', kneeHyperextension: '膝超伸', spineCurvature: '脊柱曲度', ankleAlignment: '踝对齐', hipFlexion: '髋屈曲', torsoLean: '躯干倾斜', neckAngle: '颈椎角度', bodySymmetry: '身体对称度', postureScore: '体态评分' }[k] || k;
+                  var val = typeof v === 'number' ? v.toFixed(1) : String(v);
+                  var status = '正常', statusColor = 'var(--success)';
+                  if (k === 'headForward' && v > 25 || k === 'shoulderHeightDiff' && Math.abs(v) > 10 || k === 'shoulderAngleDiff' && Math.abs(v) > 5 || k === 'pelvisTilt' && Math.abs(v) > 5 || k === 'kneeHyperextension' && Math.abs(v) > 5) { status = '异常'; statusColor = 'var(--danger)'; }
+                  else if (k === 'bodySymmetry' && v < 75 || k === 'postureScore' && v < 60) { status = '需改善'; statusColor = 'var(--warning)'; }
+                  h += '<tr style="border-bottom:1px solid rgba(255,255,255,0.04);">' +
+                    '<td style="padding:8px 12px;color:var(--text-primary);">' + label + '</td>' +
+                    '<td style="padding:8px 12px;text-align:right;font-family:var(--font-mono);color:var(--text-secondary);">' + val + '</td>' +
+                    '<td style="padding:8px 12px;text-align:center;color:var(--text-tertiary);">—</td>' +
+                    '<td style="padding:8px 12px;text-align:center;"><span style="color:' + statusColor + ';font-size:11px;font-weight:600;">' + status + '</span></td>' +
+                    '</tr>';
+                });
+                h += '</tbody></table></div>';
+                return h;
+              }
+              // 后端格式 metrics 数组
+              var h = '<div class="detail-section-title">📐 体态指标详细结果（共 ' + metrics.length + ' 项）</div>' +
+                '<div style="overflow-x:auto;margin-top:12px;">' +
+                '<table style="width:100%;border-collapse:collapse;font-size:12px;">' +
+                '<thead><tr style="border-bottom:1px solid rgba(255,255,255,0.1);">' +
+                '<th style="text-align:left;padding:8px 12px;color:var(--text-tertiary);font-weight:500;">指标名称</th>' +
+                '<th style="text-align:right;padding:8px 12px;color:var(--text-tertiary);font-weight:500;">测量值</th>' +
+                '<th style="text-align:center;padding:8px 12px;color:var(--text-tertiary);font-weight:500;">正常参考</th>' +
+                '<th style="text-align:center;padding:8px 12px;color:var(--text-tertiary);font-weight:500;">风险等级</th>' +
+                '<th style="text-align:left;padding:8px 12px;color:var(--text-tertiary);font-weight:500;">说明</th>' +
+                '</tr></thead><tbody>';
+              metrics.forEach(function(m) {
+                var name = m.metric_name || m.name || m.metric_key || '未命名';
+                var value = m.value || m.display_value || '—';
+                var normal = m.normal || '—';
+                var risk = m.risk_level || m.risk || '正常';
+                var riskColor = 'var(--success)';
+                if (risk === 'high' || risk === '高风险' || risk === '严重') riskColor = 'var(--danger)';
+                else if (risk === 'medium' || risk === '中风险' || risk === '中度') riskColor = 'var(--warning)';
+                else if (risk === 'mild' || risk === '低风险' || risk === '轻度') riskColor = '#f59e0b';
+                var desc = m.description || '';
+                h += '<tr style="border-bottom:1px solid rgba(255,255,255,0.04);">' +
+                  '<td style="padding:8px 12px;color:var(--text-primary);font-weight:500;">' + escapeHtml(name) + '</td>' +
+                  '<td style="padding:8px 12px;text-align:right;font-family:var(--font-mono);color:var(--text-secondary);">' + escapeHtml(String(value)) + '</td>' +
+                  '<td style="padding:8px 12px;text-align:center;color:var(--text-tertiary);">' + escapeHtml(String(normal)) + '</td>' +
+                  '<td style="padding:8px 12px;text-align:center;"><span style="color:' + riskColor + ';font-size:11px;font-weight:600;">' + escapeHtml(risk) + '</span></td>' +
+                  '<td style="padding:8px 12px;color:var(--text-tertiary);font-size:11px;max-width:200px;">' + escapeHtml(desc) + '</td>' +
+                  '</tr>';
+              });
+              h += '</tbody></table></div>';
+              return h;
+            })() +
+            // ========== 身体区域风险 ==========
+            (function() {
+              var regions = report.bodyRegions || [];
+              if (regions.length === 0) return '';
+              var h = '<div class="detail-section-title">🗺️ 身体区域风险评估（共 ' + regions.length + ' 个区域）</div>' +
+                '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;margin-top:12px;">';
+              regions.forEach(function(r) {
+                var riskColor = 'var(--success)';
+                var riskText = r.risk || '正常';
+                if (riskText === 'high' || riskText === '高风险' || riskText === '严重') riskColor = 'var(--danger)';
+                else if (riskText === 'medium' || riskText === '中风险' || riskText === '中度') riskColor = 'var(--warning)';
+                else if (riskText === 'mild' || riskText === '低风险') riskColor = '#f59e0b';
+                h += '<div style="background:rgba(255,255,255,0.03);border-radius:10px;padding:14px 16px;border-left:3px solid ' + riskColor + ';">' +
+                  '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">' +
+                  '<div style="font-size:14px;font-weight:600;color:var(--text-primary);">' + escapeHtml(r.name || r.key || '未命名区域') + '</div>' +
+                  '<span style="font-size:11px;color:' + riskColor + ';font-weight:600;background:rgba(255,255,255,0.06);padding:3px 10px;border-radius:10px;">' + escapeHtml(riskText) + '</span>' +
+                  '</div>' +
+                  (r.problem ? '<div style="font-size:12px;color:var(--text-secondary);line-height:1.5;">问题：' + escapeHtml(r.problem) + '</div>' : '') +
+                  (r.concernReason ? '<div style="font-size:11px;color:var(--warning);margin-top:4px;">原因：' + escapeHtml(r.concernReason) + '</div>' : '') +
+                  (r.suggestion ? '<div style="font-size:11px;color:var(--primary-light);margin-top:4px;">建议：' + escapeHtml(r.suggestion) + '</div>' : '') +
+                  '</div>';
+              });
+              h += '</div>';
+              return h;
+            })() +
+            // ========== 身体参数 ==========
+            (function() {
+              var bp = report.bodyParams || {};
+              var keys = Object.keys(bp);
+              if (keys.length === 0) return '';
+              var labelMap = { heightCm: '身高', weightKg: '体重', shoulderWidth: '肩宽', hipWidth: '臀宽', legLength: '腿长', shoulderTilt: '肩部倾斜', pelvisTilt: '骨盆倾斜', pelvisSideTilt: '骨盆侧倾', headForward: '头前伸距离', kneeValgus: '膝外翻', height: '身高', weight: '体重', shoulderWidth: '肩宽', hipWidth: '臀宽', armLength: '臂长', legLength: '腿长' };
+              var unitMap = { heightCm: 'cm', weightKg: 'kg', shoulderWidth: 'cm', hipWidth: 'cm', legLength: 'cm', shoulderTilt: '°', pelvisTilt: '°', pelvisSideTilt: '°', headForward: 'mm', kneeValgus: '°' };
+              var h = '<div class="detail-section-title">📏 人体测量参数</div>' +
+                '<div class="detail-grid">';
+              keys.forEach(function(k) {
+                if (k === 'generated_from_mock' || k === 'model_type') return;
+                var label = labelMap[k] || k;
+                var unit = unitMap[k] || '';
+                var val = bp[k];
+                h += '<div class="detail-item"><div class="detail-item-label">' + label + '</div><div class="detail-item-value mono">' + (typeof val === 'number' ? val.toFixed(1) : String(val || '—')) + ' ' + unit + '</div></div>';
+              });
+              h += '</div>';
+              return h;
+            })() +
+            // ========== 评估结果总览 ==========
+            '<div class="detail-section-title">📊 评估结果总览</div>' +
+            '<div class="detail-grid">' +
+              '<div class="detail-item"><div class="detail-item-label">综合评分</div><div class="detail-item-value mono" style="color:' + strokeColor + ';font-size:22px;font-weight:700;">' + report.score + ' 分</div></div>' +
+              '<div class="detail-item"><div class="detail-item-label">风险等级</div><div class="detail-item-value" style="color:' + strokeColor + ';font-weight:600;">' + escapeHtml(scoreText) + '</div></div>' +
+              '<div class="detail-item"><div class="detail-item-label">发现问题</div><div class="detail-item-value">' + issueCount + ' 项</div></div>' +
+              '<div class="detail-item"><div class="detail-item-label">数据来源</div><div class="detail-item-value">' + (report.landmarkSource || '姿态分析引擎') + '</div></div>' +
+            '</div>' +
+            // ========== 主要发现 ==========
+            (issueCount > 0 ?
+              '<div class="detail-section-title">⚠️ 主要发现</div>' +
+              '<div class="detail-tags">' +
+                (report.issues || report.mainFindings || []).map(function(issue) {
+                  return '<span class="detail-tag">' + escapeHtml(issue) + '</span>';
+                }).join('') +
+              '</div>' : '') +
+            // ========== 重点关注区域 ==========
+            (function() {
+              var areas = report.focusAreas || [];
+              if (areas.length === 0) return '';
+              var h = '<div class="detail-section-title">🎯 重点关注区域</div>' +
+                '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;margin-top:12px;">';
+              areas.forEach(function(area) {
+                h += '<div style="background:rgba(56,189,248,0.08);border:1px solid rgba(56,189,248,0.25);border-radius:8px;padding:10px 14px;text-align:center;">' +
+                  '<div style="font-size:13px;font-weight:600;color:var(--primary-light);">' + escapeHtml(area) + '</div>' +
+                  '</div>';
+              });
+              h += '</div>';
+              return h;
+            })() +
+            // ========== 干预建议 ==========
+            (function() {
+              var suggs = report.suggestions || [];
+              if (suggs.length === 0) return '';
+              var h = '<div class="detail-section-title">💡 干预建议（共 ' + suggs.length + ' 条）</div>' +
+                '<div style="display:flex;flex-direction:column;gap:10px;margin-top:12px;">';
+              suggs.forEach(function(s, si) {
+                h += '<div style="background:rgba(255,255,255,0.03);border-radius:10px;padding:14px 16px;border-left:3px solid var(--primary);display:flex;gap:14px;">' +
+                  '<div style="width:28px;height:28px;border-radius:50%;background:var(--primary);color:#0a0a0f;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0;">' + (si + 1) + '</div>' +
+                  '<div style="font-size:13px;color:var(--text-primary);line-height:1.7;flex:1;">' + escapeHtml(s) + '</div>' +
+                  '</div>';
+              });
+              h += '</div>';
+              return h;
+            })() +
+            // ========== 矫正方案（后端 correctionPlan 格式）==========
+            (function() {
+              var plan = report.correctionPlan;
+              if (!plan) return '';
+              // 兼容两种格式：数组直接就是纠正项，或者包含 items 的对象
+              var items = Array.isArray(plan) ? plan : (plan.items || []);
+              if (items.length === 0) return '';
+              var planName = plan.planName || '个性化纠正方案';
+              var h = '<div class="detail-section-title">📋 纠正训练方案 — ' + escapeHtml(planName) + '</div>' +
+                '<div style="display:flex;flex-direction:column;gap:14px;margin-top:12px;">';
+              items.forEach(function(item, ii) {
+                var pName = item.problem_name || item.name || item.actionName || '纠正项目 ' + (ii + 1);
+                var reason = item.possible_reason || '';
+                var goal = item.goal || '';
+                var steps = item.daily_steps || [];
+                var actions = item.actions || [];
+                var precautions = item.precautions || [];
+                var freq = item.frequency || item.reps || '';
+                var retest = item.retest || '';
+                h += '<div style="background:rgba(255,255,255,0.03);border-radius:12px;padding:16px 18px;border:1px solid rgba(255,255,255,0.06);">' +
+                  '<div style="font-size:15px;font-weight:700;color:var(--text-primary);margin-bottom:10px;">' + (ii + 1) + '. ' + escapeHtml(pName) + '</div>' +
+                  '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">';
+                if (reason) h += '<div style="font-size:12px;"><span style="color:var(--text-tertiary);">可能原因：</span><span style="color:var(--warning);">' + escapeHtml(reason) + '</span></div>';
+                if (goal) h += '<div style="font-size:12px;"><span style="color:var(--text-tertiary);">纠正目标：</span><span style="color:var(--success);">' + escapeHtml(goal) + '</span></div>';
+                if (freq) h += '<div style="font-size:12px;"><span style="color:var(--text-tertiary);">训练频率：</span><span style="color:var(--primary-light);">' + escapeHtml(freq) + '</span></div>';
+                if (retest) h += '<div style="font-size:12px;"><span style="color:var(--text-tertiary);">复测建议：</span><span style="color:var(--text-secondary);">' + escapeHtml(retest) + '</span></div>';
+                h += '</div>';
+                if (steps.length > 0) {
+                  h += '<div style="margin-top:10px;font-size:12px;color:var(--text-tertiary);margin-bottom:6px;">每日纠正步骤：</div>' +
+                    '<div style="display:flex;flex-direction:column;gap:4px;">';
+                  steps.forEach(function(step, si) {
+                    h += '<div style="display:flex;align-items:flex-start;gap:8px;font-size:12px;color:var(--text-secondary);line-height:1.5;">' +
+                      '<span style="color:var(--primary);font-weight:600;flex-shrink:0;">' + (si + 1) + '.</span>' +
+                      '<span>' + escapeHtml(step) + '</span></div>';
+                  });
+                  h += '</div>';
+                }
+                if (actions.length > 0) {
+                  h += '<div style="margin-top:10px;font-size:12px;color:var(--text-tertiary);margin-bottom:6px;">动作详情：</div>' +
+                    '<div style="display:flex;flex-direction:column;gap:8px;">';
+                  actions.forEach(function(action) {
+                    h += '<div style="border-left:2px solid var(--primary);padding-left:10px;font-size:12px;line-height:1.6;">' +
+                      '<div style="font-weight:700;color:var(--text-primary);">' + escapeHtml(action.name || '') + '</div>' +
+                      '<div><span style="color:var(--text-tertiary);">做法：</span>' + escapeHtml(action.how_to || '') + '</div>' +
+                      '<div><span style="color:var(--text-tertiary);">次数/组数：</span>' + escapeHtml(action.dosage || '') + '</div>' +
+                      '<div><span style="color:var(--text-tertiary);">预计用时：</span>' + escapeHtml(action.duration || '') + '</div>' +
+                      '<div><span style="color:var(--text-tertiary);">注意：</span>' + escapeHtml(action.attention || '') + '</div>' +
+                    '</div>';
+                  });
+                  h += '</div>';
+                }
+                if (precautions.length > 0) {
+                  h += '<div style="margin-top:10px;font-size:12px;color:var(--text-tertiary);">注意事项：</div><ul style="margin:4px 0 0 18px;color:var(--text-secondary);font-size:12px;line-height:1.6;">';
+                  precautions.forEach(function(note) { h += '<li>' + escapeHtml(note) + '</li>'; });
+                  h += '</ul>';
+                }
+                if (item.description) {
+                  h += '<div style="margin-top:8px;font-size:12px;color:var(--text-secondary);line-height:1.5;border-top:1px solid rgba(255,255,255,0.04);padding-top:8px;">' + escapeHtml(item.description) + '</div>';
+                }
+                h += '</div>';
+              });
+              h += '</div>';
+              return h;
+            })() +
+            // ========== 生活习惯与症状描述 ==========
+            (report.personalInfo?.habits || report.habits ?
+              '<div class="detail-section-title">📝 生活习惯描述</div>' +
+              '<div class="detail-text">' + escapeHtml(report.personalInfo?.habits || report.habits) + '</div>' : '') +
+            (report.personalInfo?.pain || report.pain ?
+              '<div class="detail-section-title">💢 不适部位描述</div>' +
+              '<div class="detail-text">' + escapeHtml(report.personalInfo?.pain || report.pain) + '</div>' : '') +
+            (report.personalInfo?.selfIssue || report.selfIssue ?
+              '<div class="detail-section-title">🔍 自觉体态问题描述</div>' +
+              '<div class="detail-text">' + escapeHtml(report.personalInfo?.selfIssue || report.selfIssue) + '</div>' : '') +
+          '</div>' +
+        '</td></tr>';
+      }).join('');
+    }
+
+    function filterReports() {
+      renderReports();
+    }
+
+    function toggleReportDetail(idx) {
+      var panel = document.getElementById('report-detail-' + idx);
+      if (panel) {
+        panel.classList.toggle('show');
+      }
+    }
+
+    // HTML 转义
+    function escapeHtml(str) {
+      if (!str) return '';
+      return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    // ===== 训练挑战渲染 =====
+    function renderChallenges() {
+      var challenges = getAllChallenges();
+      var search = (document.getElementById('challengeSearch').value || '').trim();
+      var statusFilter = document.getElementById('challengeStatusFilter').value;
+
+      var planNames = {
+        'light': '轻松体验',
+        'standard': '推荐标准',
+        'pro': '强约束'
+      };
+
+      var challengeConfig = {
+        7: '7天入门挑战',
+        14: '14天标准挑战',
+        28: '28天稳定挑战'
+      };
+
+      var filtered = challenges.filter(function(c) {
+        var matchSearch = !search || c.phone.includes(search);
+        var matchStatus = statusFilter === 'all' ||
+          (statusFilter === 'active' && c.challenge.status === 'active') ||
+          (statusFilter === 'completed' && c.challenge.status === 'completed');
+        return matchSearch && matchStatus;
+      });
+
+      var tbody = document.getElementById('challengesTableBody');
+      var emptyEl = document.getElementById('challengesEmpty');
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = '';
+        emptyEl.style.display = 'block';
+        return;
+      }
+
+      emptyEl.style.display = 'none';
+      tbody.innerHTML = filtered.map(function(item, idx) {
+        var ch = item.challenge;
+        var masked = maskPhone(item.phone);
+        var typeName = challengeConfig[ch.days] || ch.days + '天挑战';
+        var planName = planNames[ch.planId] || ch.planId || '--';
+        var progressPct = ch.days > 0 ? Math.round((ch.checkedDays / ch.days) * 100) : 0;
+
+        var statusTag = '';
+        if (ch.status === 'active') {
+          statusTag = '<span class="tag tag-accent">进行中</span>';
+        } else if (ch.status === 'completed') {
+          statusTag = '<span class="tag tag-success">已完成</span>';
+        } else {
+          statusTag = '<span class="tag tag-default">' + (ch.status || '未知') + '</span>';
+        }
+
+        // 打卡记录日历
+        var dailyHtml = '';
+        if (ch.dailyRecords && ch.dailyRecords.length > 0) {
+          dailyHtml = '<div class="checkin-timeline">';
+          ch.dailyRecords.forEach(function(record) {
+            var cls = record.status || 'future';
+            if (cls === 'future') cls = 'future';
+            dailyHtml += '<div class="checkin-day ' + cls + '">' +
+              '<span class="day-num">D' + record.dayNumber + '</span>' +
+              '<span>' + ({checked:'已打卡', missed:'缺卡', leave:'请假', pending:'待完成', future:'未开始'}[record.status] || record.status) + '</span>' +
+            '</div>';
+          });
+          dailyHtml += '</div>';
+        }
+
+        var refund = '--';
+        if (ch.status === 'active') {
+          // 简单计算返还
+          var plan = { light: { baseDeduct: 8 }, standard: { baseDeduct: 10 }, pro: { baseDeduct: 15 } }[ch.planId];
+          if (plan && ch.missedDays !== undefined) {
+            var totalDeducted = 0;
+            for (var i = 1; i <= ch.missedDays; i++) {
+              totalDeducted += Math.round(plan.baseDeduct * (1 + 0.5 * (i - 1)));
+            }
+            refund = Math.max(0, ch.deposit - totalDeducted);
+          } else {
+            refund = ch.deposit || '--';
+          }
+        }
+
+        return '<tr>' +
+          '<td class="mono">' + masked + '</td>' +
+          '<td>' + typeName + '</td>' +
+          '<td>' + planName + '</td>' +
+          '<td>' +
+            '<div style="display:flex;align-items:center;gap:8px;">' +
+              '<div style="flex:1;height:4px;background:var(--border-color);border-radius:2px;max-width:100px;overflow:hidden;">' +
+                '<div style="height:100%;width:' + progressPct + '%;background:var(--accent);border-radius:2px;transition:width 0.4s;"></div>' +
+              '</div>' +
+              '<span class="mono" style="font-size:12px;color:var(--text-secondary);">' + ch.checkedDays + '/' + ch.days + ' (' + progressPct + '%)</span>' +
+            '</div>' +
+          '</td>' +
+          '<td>' + statusTag + '</td>' +
+          '<td><button class="btn-sm primary" onclick="toggleChallengeDetail(\'' + idx + '\')">查看详情</button></td>' +
+        '</tr>' +
+        '<tr class="detail-row"><td colspan="6">' +
+          '<div class="detail-panel" id="challenge-detail-' + idx + '">' +
+            '<div class="detail-grid">' +
+              '<div class="detail-item"><div class="detail-item-label">手机号</div><div class="detail-item-value mono">' + item.phone + '</div></div>' +
+              '<div class="detail-item"><div class="detail-item-label">挑战类型</div><div class="detail-item-value">' + typeName + '</div></div>' +
+              '<div class="detail-item"><div class="detail-item-label">计划档位</div><div class="detail-item-value">' + planName + '</div></div>' +
+              '<div class="detail-item"><div class="detail-item-label">挑战金总额</div><div class="detail-item-value mono">&yen;' + (ch.totalAmount || 0) + '</div></div>' +
+              '<div class="detail-item"><div class="detail-item-label">保证金</div><div class="detail-item-value mono">&yen;' + (ch.deposit || 0) + '</div></div>' +
+              '<div class="detail-item"><div class="detail-item-label">预计返还</div><div class="detail-item-value mono">&yen;' + refund + '</div></div>' +
+              '<div class="detail-item"><div class="detail-item-label">已打卡</div><div class="detail-item-value mono">' + (ch.checkedDays || 0) + ' 天</div></div>' +
+              '<div class="detail-item"><div class="detail-item-label">已请假</div><div class="detail-item-value mono">' + (ch.leaveDays || 0) + ' 天</div></div>' +
+              '<div class="detail-item"><div class="detail-item-label">已扣款</div><div class="detail-item-value mono" style="color:var(--danger);">-&yen;' + (ch.deductedAmount || 0) + '</div></div>' +
+              '<div class="detail-item"><div class="detail-item-label">开始日期</div><div class="detail-item-value">' + (ch.startDate || '--') + '</div></div>' +
+              '<div class="detail-item"><div class="detail-item-label">当前天数</div><div class="detail-item-value mono">第 ' + (ch.currentDay || 1) + ' / ' + ch.days + ' 天</div></div>' +
+              '<div class="detail-item"><div class="detail-item-label">状态</div><div class="detail-item-value">' + (ch.status === 'active' ? '进行中' : ch.status === 'completed' ? '已完成' : ch.status || '未知') + '</div></div>' +
+            '</div>' +
+            '<div class="detail-section-title">每日打卡记录</div>' +
+            (dailyHtml || '<div style="color:var(--text-tertiary);font-size:13px;">暂无打卡记录</div>') +
+          '</div>' +
+        '</td></tr>';
+      }).join('');
+    }
+
+    function filterChallenges() {
+      renderChallenges();
+    }
+
+    function toggleChallengeDetail(idx) {
+      var panel = document.getElementById('challenge-detail-' + idx);
+      if (panel) {
+        panel.classList.toggle('show');
+      }
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>挑战进度</title>
+  <link rel="stylesheet" href="css/style.css?v=20260714-pose-auto-v32">
+  <style>
+    .overview-card {
+      background: linear-gradient(145deg, #1e1b4b 0%, #312e81 60%, #4338ca 100%);
+      border-radius: var(--radius);
+      padding: 24px 20px;
+      color: white;
+      margin-top: 8px;
+    }
+    .overview-header,
+    .settlement-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .overview-title { font-size: 18px; font-weight: 700; }
+    .overview-badge {
+      background: rgba(255,255,255,0.16);
+      padding: 5px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .overview-money,
+    .overview-stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-top: 18px;
+    }
+    .overview-stats { grid-template-columns: repeat(4, 1fr); }
+    .money-item,
+    .overview-stat {
+      background: rgba(255,255,255,0.09);
+      border-radius: 12px;
+      padding: 12px 6px;
+      text-align: center;
+    }
+    .money-item .num,
+    .overview-stat .num {
+      font-size: 22px;
+      font-weight: 700;
+      line-height: 1.2;
+    }
+    .money-item .label,
+    .overview-stat .label {
+      font-size: 11px;
+      color: rgba(255,255,255,0.72);
+      margin-top: 4px;
+    }
+    .countdown {
+      margin: 14px 0;
+      padding: 16px;
+      border-radius: var(--radius);
+      background: var(--primary);
+      color: white;
+      text-align: center;
+    }
+    .countdown .time {
+      font-size: 32px;
+      font-weight: 800;
+      letter-spacing: 1px;
+    }
+    .progress-track {
+      height: 10px;
+      border-radius: 999px;
+      overflow: hidden;
+      background: var(--border-light);
+      margin: 12px 0 4px;
+    }
+    .progress-fill {
+      height: 100%;
+      width: 0;
+      border-radius: 999px;
+      background: var(--success);
+      transition: width 0.3s ease;
+    }
+    .exercise-list,
+    .timeline-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .exercise-item {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 15px;
+      background: var(--border-light);
+      border-radius: var(--radius-sm);
+      border: 1px solid transparent;
+    }
+    .exercise-item.done {
+      background: #dcfce7;
+      border-color: var(--success);
+    }
+    .exercise-num {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      background: var(--primary);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+    .exercise-item.done .exercise-num { background: var(--success); }
+    .exercise-item img { flex-shrink: 0; }
+    .exercise-info { flex: 1; min-width: 0; }
+    .exercise-name { font-size: 15px; font-weight: 700; }
+    .exercise-meta {
+      font-size: 12px;
+      color: var(--text-tertiary);
+      margin-top: 3px;
+    }
+    .timeline-item {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--border-light);
+      font-size: 14px;
+    }
+    .timeline-item:last-child { border-bottom: none; }
+    .settlement-row {
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border-light);
+      font-size: 14px;
+    }
+    .settlement-row:last-child {
+      border-bottom: none;
+      font-weight: 700;
+      color: var(--success);
+    }
+  </style>
+</head>
+<body>
+  <div class="navbar">
+    <a href="index.html?v=20260714-pose-auto-v32" class="back-btn">&#8592;</a>
+    <h1>挑战进度</h1>
+    <div></div>
+  </div>
+
+  <div class="container" id="progress-container">
+    <div id="no-challenge" class="card" style="text-align:center; padding:48px 20px; display:none;">
+      <div style="font-size:54px; margin-bottom:16px;">&#9734;</div>
+      <h2 style="margin-bottom:8px; font-size:20px; font-weight:700;">暂无进行中的挑战</h2>
+      <p style="color:var(--text-secondary); margin-bottom:24px; font-size:15px;">选择一个挑战，开始体态改善计划。</p>
+      <a href="index.html?v=20260714-pose-auto-v32" class="btn btn-primary">返回首页选择挑战</a>
+    </div>
+
+    <div id="challenge-active" style="display:none;">
+      <div class="card animate-in" style="margin-bottom:12px;">
+        <h3 class="card-title">体态照片采集</h3>
+        <p style="font-size:13px; color:var(--text-tertiary); margin-bottom:14px;">
+          请先完成 8 视图体态照片，再生成正式 AI 体态评估和 3D 模型。
+        </p>
+        <a href="index.html?step=photos&v=20260714-pose-auto-v32" class="btn btn-primary" style="display:block; text-align:center;">拍摄体态照片</a>
+      </div>
+
+      <div class="overview-card animate-in">
+        <div class="overview-header">
+          <div class="overview-title" id="overview-title">AI体态纠正挑战营</div>
+          <div class="overview-badge" id="overview-status">进行中</div>
+        </div>
+
+        <div class="overview-money">
+          <div class="money-item">
+            <div class="num" id="ov-total">¥0</div>
+            <div class="label">挑战金总额</div>
+          </div>
+          <div class="money-item">
+            <div class="num" id="ov-refund" style="color:#34d399;">¥0</div>
+            <div class="label">当前可返</div>
+          </div>
+          <div class="money-item">
+            <div class="num" id="ov-deducted" style="color:#f87171;">-¥0</div>
+            <div class="label">已扣款</div>
+          </div>
+        </div>
+
+        <div class="overview-stats">
+          <div class="overview-stat"><div class="num" id="ov-checked">0</div><div class="label">已打卡</div></div>
+          <div class="overview-stat"><div class="num" id="ov-leave">0</div><div class="label">已请假</div></div>
+          <div class="overview-stat"><div class="num" id="ov-missed">0</div><div class="label">缺卡</div></div>
+          <div class="overview-stat"><div class="num" id="ov-remain">0</div><div class="label">剩余天数</div></div>
+        </div>
+      </div>
+
+      <div class="countdown">
+        <div style="font-size:14px; opacity:0.9; margin-bottom:4px;">今日打卡截止时间 23:59</div>
+        <div class="time" id="countdown">--:--:--</div>
+      </div>
+
+      <div class="card animate-in">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+          <h3 class="card-title" style="margin-bottom:0;">挑战完成度</h3>
+          <span id="progress-text" style="font-size:13px; color:var(--text-tertiary);">0%</span>
+        </div>
+        <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
+        <p style="font-size:13px; color:var(--text-tertiary); margin-top:8px;">
+          第 <span id="current-day-num">1</span> / <span id="total-days">7</span> 天
+        </p>
+      </div>
+
+      <div class="card animate-in">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+          <h3 class="card-title" style="margin-bottom:0;">今日训练</h3>
+          <span id="training-status" style="font-size:13px; color:var(--text-tertiary);">待完成</span>
+        </div>
+        <div class="exercise-list" id="exercise-list"></div>
+        <button class="btn btn-primary" id="checkin-btn" style="margin-top:16px;" onclick="doCheckIn()">今日打卡</button>
+        <div style="display:flex; gap:12px; margin-top:12px;">
+          <button class="btn btn-outline" style="flex:1;" id="leave-btn" onclick="applyLeave()">申请请假</button>
+          <a href="calendar.html" class="btn btn-outline" style="flex:1; text-align:center;">查看日历</a>
+        </div>
+      </div>
+
+      <div class="card animate-in">
+        <h3 class="card-title">结算预览</h3>
+        <div class="settlement-row"><span>挑战金总额</span><span id="settle-total">¥0</span></div>
+        <div class="settlement-row"><span>服务费</span><span id="settle-fee">¥0</span></div>
+        <div class="settlement-row"><span>已扣款</span><span id="settle-deducted">-¥0</span></div>
+        <div class="settlement-row"><span>预计可返还</span><span id="settle-refund">¥0</span></div>
+      </div>
+
+      <div class="card animate-in">
+        <h3 class="card-title">打卡记录</h3>
+        <div class="timeline-list" id="checkin-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <nav class="bottom-nav">
+    <a href="index.html?v=20260714-pose-auto-v32"><span class="icon">&#8962;</span><span>首页</span></a>
+    <a href="challenge_progress.html?v=20260714-pose-auto-v32" class="active"><span class="icon">&#10003;</span><span>打卡</span></a>
+    <a href="user.html?v=20260714-pose-auto-v32"><span class="icon">&#9679;</span><span>我的</span></a>
+  </nav>
+
+  <script src="js/app.js?v=20260714-pose-auto-v32" charset="UTF-8"></script>
+  <script>
+    const CHECKIN_DEADLINE_HOUR = 23;
+    const CHECKIN_DEADLINE_MINUTE = 59;
+    const API_BASE = 'http://localhost:8000';
+    let challenge = null;
+    let dailyExercises = [];
+
+    function money(value) {
+      return '¥' + Number(value || 0);
+    }
+
+    function todayString() {
+      return new Date().toISOString().split('T')[0];
+    }
+
+    async function loadDailyExercises(challengeDays, currentDay) {
+      try {
+        const resp = await fetch(API_BASE + '/api/challenge/' + challengeDays + '/schedule?day=' + currentDay);
+        const data = await resp.json();
+        dailyExercises = Array.isArray(data.exercises) ? data.exercises : [];
+      } catch (err) {
+        console.error('加载每日训练安排失败:', err);
+        dailyExercises = [
+          { id: 0, name_zh: '颈肩放松训练', instructions_zh: '下颌内收、胸椎伸展、肩胛后缩', sets: 3, reps: 12, gif_url: null },
+          { id: 0, name_zh: '髋膝踝力线训练', instructions_zh: '臀中肌激活、靠墙半蹲、单腿稳定', sets: 3, reps: 12, gif_url: null },
+          { id: 0, name_zh: '核心与骨盆控制', instructions_zh: '死虫训练、臀桥、髂腰肌拉伸', sets: 3, reps: 12, gif_url: null }
+        ];
+      }
+      renderExerciseList();
+    }
+
+    function getTodayRecord() {
+      return challenge.dailyRecords.find(function(record) { return record.date === todayString(); });
+    }
+
+    function initProgress() {
+      APP.loadData();
+      challenge = APP.activeChallenge;
+      if (!challenge || challenge.status !== 'active') {
+        document.getElementById('no-challenge').style.display = 'block';
+        document.getElementById('challenge-active').style.display = 'none';
+        return;
+      }
+      normalizeChallenge();
+      document.getElementById('no-challenge').style.display = 'none';
+      document.getElementById('challenge-active').style.display = 'block';
+      renderProgress();
+      renderRecords();
+      startCountdown();
+      loadDailyExercises(challenge.days, challenge.currentDay);
+    }
+
+    function normalizeChallenge() {
+      challenge.leaveDays = Number(challenge.leaveDays || 0);
+      challenge.missedDays = Number(challenge.missedDays || 0);
+      challenge.checkedDays = Number(challenge.checkedDays || 0);
+      challenge.currentDay = Math.max(1, Number(challenge.currentDay || 1));
+      challenge.deductedAmount = Number(challenge.deductedAmount || 0);
+      challenge.dailyRecords = Array.isArray(challenge.dailyRecords) ? challenge.dailyRecords : [];
+      if (!getTodayRecord() && challenge.currentDay <= challenge.days) {
+        challenge.dailyRecords.push({
+          date: todayString(),
+          status: 'pending',
+          dayNumber: challenge.currentDay
+        });
+        APP.saveData();
+      }
+    }
+
+    function renderProgress() {
+      const config = APP.challenges[challenge.days] || APP.challenges[7];
+      const refund = APP.calculateRefund(challenge);
+      const remainingDays = Math.max(0, challenge.days - challenge.checkedDays - challenge.leaveDays - challenge.missedDays);
+      const progress = challenge.days > 0 ? Math.min(100, Math.round((challenge.checkedDays / challenge.days) * 100)) : 0;
+
+      document.getElementById('overview-title').textContent = config.name;
+      document.getElementById('ov-total').textContent = money(challenge.totalAmount);
+      document.getElementById('ov-refund').textContent = money(refund);
+      document.getElementById('ov-deducted').textContent = '-' + money(challenge.deductedAmount);
+      document.getElementById('ov-checked').textContent = challenge.checkedDays;
+      document.getElementById('ov-leave').textContent = challenge.leaveDays;
+      document.getElementById('ov-missed').textContent = challenge.missedDays;
+      document.getElementById('ov-remain').textContent = remainingDays;
+      document.getElementById('progress-text').textContent = progress + '%';
+      document.getElementById('progress-fill').style.width = progress + '%';
+      document.getElementById('current-day-num').textContent = challenge.currentDay;
+      document.getElementById('total-days').textContent = challenge.days;
+      document.getElementById('settle-total').textContent = money(challenge.totalAmount);
+      document.getElementById('settle-fee').textContent = money(challenge.serviceFee);
+      document.getElementById('settle-deducted').textContent = '-' + money(challenge.deductedAmount);
+      document.getElementById('settle-refund').textContent = money(refund);
+
+      const today = getTodayRecord();
+      const checked = today && today.status === 'checked';
+      const leave = today && today.status === 'leave';
+      document.getElementById('checkin-btn').disabled = checked || leave;
+      document.getElementById('leave-btn').disabled = checked || leave || challenge.leaveDays >= config.leaveAllowed;
+      document.getElementById('checkin-btn').textContent = checked ? '今日已打卡' : leave ? '今日已请假' : '今日打卡';
+      document.getElementById('training-status').textContent = checked ? '已完成' : leave ? '已请假' : '待完成';
+    }
+
+    function renderExerciseList() {
+      const today = getTodayRecord();
+      const done = today && today.status === 'checked';
+      const container = document.getElementById('exercise-list');
+      if (!dailyExercises.length) {
+        container.innerHTML = '<div style="text-align:center;color:var(--text-tertiary);padding:28px;">正在加载训练安排...</div>';
+        return;
+      }
+      container.innerHTML = dailyExercises.map(function(item, index) {
+        const name = item.name_zh || item.name || '训练动作';
+        const gifHtml = item.gif_url ? '<img src="' + item.gif_url + '" alt="' + name + '" style="width:60px;height:60px;border-radius:8px;object-fit:cover;" onerror="this.style.display=\\'none\\'">' : '';
+        const metaText = item.instructions_zh ? item.instructions_zh.substring(0, 40) + '...' : '';
+        const setsReps = item.sets && item.reps ? item.sets + '组 x ' + item.reps + '次' : '';
+        return '<div class="exercise-item ' + (done ? 'done' : '') + '">' +
+          '<div class="exercise-num">' + (done ? '✓' : (index + 1)) + '</div>' +
+          gifHtml +
+          '<div class="exercise-info">' +
+            '<div class="exercise-name">' + name + '</div>' +
+            '<div class="exercise-meta">' + metaText + (setsReps ? ' · ' + setsReps : '') + '</div>' +
+          '</div>' +
+          '<div style="font-size:12px;color:' + (done ? '#16a34a' : 'var(--text-tertiary)') + '">' + (done ? '已完成' : setsReps || '建议完成') + '</div>' +
+        '</div>';
+      }).join('');
+    }
+
+    function doCheckIn() {
+      const record = getTodayRecord();
+      if (!record || record.status === 'checked') return;
+      record.status = 'checked';
+      challenge.checkedDays += 1;
+      challenge.currentDay = Math.min(challenge.days, challenge.currentDay + 1);
+      if (challenge.checkedDays >= challenge.days) challenge.status = 'completed';
+      APP.activeChallenge = challenge;
+      APP.saveData();
+      if (challenge.status === 'completed') {
+        window.location.href = 'challenge_end.html?result=perfect';
+        return;
+      }
+      renderProgress();
+      renderRecords();
+      loadDailyExercises(APP.activeChallenge.days, APP.activeChallenge.currentDay);
+    }
+
+    function applyLeave() {
+      const config = APP.challenges[challenge.days] || APP.challenges[7];
+      if (challenge.leaveDays >= config.leaveAllowed) {
+        alert('请假次数已用完。');
+        return;
+      }
+      const record = getTodayRecord();
+      if (!record || record.status === 'checked') return;
+      record.status = 'leave';
+      challenge.leaveDays += 1;
+      const lastDate = new Date(challenge.dailyRecords[challenge.dailyRecords.length - 1].date);
+      lastDate.setDate(lastDate.getDate() + 1);
+      challenge.dailyRecords.push({
+        date: lastDate.toISOString().split('T')[0],
+        status: 'future',
+        dayNumber: challenge.dailyRecords.length + 1
+      });
+      APP.activeChallenge = challenge;
+      APP.saveData();
+      renderProgress();
+      renderExerciseList();
+      renderRecords();
+    }
+
+    function renderRecords() {
+      const visible = challenge.dailyRecords.filter(function(record) { return record.status !== 'future'; });
+      document.getElementById('checkin-list').innerHTML = visible.length ? visible.map(function(record) {
+        const statusText = record.status === 'checked' ? '已打卡' : record.status === 'leave' ? '已请假' : record.status === 'missed' ? '缺卡' : '待完成';
+        return `
+          <div class="timeline-item">
+            <span>第 ${record.dayNumber} 天 · ${record.date}</span>
+            <strong>${statusText}</strong>
+          </div>
+        `;
+      }).join('') : '<p style="color:var(--text-tertiary); font-size:14px;">暂无记录</p>';
+    }
+
+    function startCountdown() {
+      clearInterval(window.__challengeCountdown);
+      function update() {
+        const now = new Date();
+        const deadline = new Date();
+        deadline.setHours(CHECKIN_DEADLINE_HOUR, CHECKIN_DEADLINE_MINUTE, 0, 0);
+        if (now > deadline) deadline.setDate(deadline.getDate() + 1);
+        const diff = Math.max(0, deadline - now);
+        const h = String(Math.floor(diff / 3600000)).padStart(2, '0');
+        const m = String(Math.floor((diff % 3600000) / 60000)).padStart(2, '0');
+        const s = String(Math.floor((diff % 60000) / 1000)).padStart(2, '0');
+        document.getElementById('countdown').textContent = h + ':' + m + ':' + s;
+      }
+      update();
+      window.__challengeCountdown = setInterval(update, 1000);
+    }
+
+    document.addEventListener('DOMContentLoaded', initProgress);
+  </script>
+</body>
+</html>
+
+
+
+
+

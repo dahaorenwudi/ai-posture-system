@@ -1,0 +1,7 @@
+﻿__pycache__/
+*.pyc
+*.pyo
+.server.log
+.server.err.log
+.pytest_cache/
+tests/

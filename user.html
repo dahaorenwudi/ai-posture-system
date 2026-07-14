@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>我的</title>
+  <link rel="stylesheet" href="css/style.css?v=20260714-pose-auto-v32">
+</head>
+<body>
+  <div class="navbar">
+    <div></div>
+    <h1>个人中心</h1>
+    <div></div>
+  </div>
+
+  <div class="container">
+    <div class="card" style="margin-top:8px; background:linear-gradient(135deg, var(--primary), #8b5cf6); color:white; border-radius:var(--radius);">
+      <div style="display:flex; align-items:center; gap:16px;">
+        <div style="width:60px; height:60px; border-radius:50%; background:rgba(255,255,255,0.2); display:flex; align-items:center; justify-content:center; font-size:28px; flex-shrink:0;">●</div>
+        <div>
+          <h2 style="font-size:20px; font-weight:700; margin-bottom:4px;" id="user-name">用户</h2>
+          <p style="opacity:0.8; font-size:14px;">已参加 <span id="challenge-count">0</span> 次挑战</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-item">
+        <div class="value" id="total-checkins">0</div>
+        <div class="label">累计打卡</div>
+      </div>
+      <div class="stat-item">
+        <div class="value" style="color:var(--success);" id="total-refund">¥0</div>
+        <div class="label">预计返还</div>
+      </div>
+      <div class="stat-item">
+        <div class="value" id="streak-days">0</div>
+        <div class="label">连续天数</div>
+      </div>
+    </div>
+
+    <div class="menu-list">
+      <div style="display:flex; align-items:center; justify-content:space-between; padding:16px 20px; border-bottom:0.5px solid var(--border-light);">
+        <span style="font-size:15px; font-weight:500;">打卡提醒</span>
+        <label class="toggle-switch">
+          <input type="checkbox" checked>
+          <span class="slider"></span>
+        </label>
+      </div>
+      <a href="challenge_progress.html?v=20260714-pose-auto-v32" style="display:block; padding:16px 20px; text-decoration:none; color:var(--text); border-bottom:0.5px solid var(--border-light);">查看当前挑战</a>
+      <a href="calendar.html" style="display:block; padding:16px 20px; text-decoration:none; color:var(--text); border-bottom:0.5px solid var(--border-light);">查看打卡日历</a>
+      <div style="padding:16px 20px; color:var(--text-tertiary); font-size:14px;">服务协议与隐私政策</div>
+    </div>
+
+    <div class="card" id="challenge-card" style="display:none;">
+      <h3 class="card-title">当前挑战</h3>
+      <div id="challenge-summary" style="font-size:14px; color:var(--text-secondary); line-height:1.8;"></div>
+    </div>
+
+    <div style="text-align:center; margin:24px 0 8px;">
+      <button class="btn btn-outline" style="width:100%; padding:14px; font-size:15px; color:var(--danger); border-color:var(--danger);" onclick="logout()">退出登录</button>
+    </div>
+
+    <div style="text-align:center; margin:16px 0 8px;">
+      <button class="btn btn-outline btn-sm" style="width:auto; padding:10px 20px; font-size:14px;" onclick="resetData()">清除本地挑战数据</button>
+    </div>
+  </div>
+
+  <nav class="bottom-nav">
+    <a href="index.html?v=20260714-pose-auto-v32"><span class="icon">&#8962;</span><span>首页</span></a>
+    <a href="challenge_progress.html?v=20260714-pose-auto-v32"><span class="icon">&#10003;</span><span>打卡</span></a>
+    <a href="user.html?v=20260714-pose-auto-v32" class="active"><span class="icon">&#9679;</span><span>我的</span></a>
+  </nav>
+
+  <script src="js/app.js?v=20260714-pose-auto-v32" charset="UTF-8"></script>
+  <script>
+    function money(value) {
+      return '¥' + Number(value || 0);
+    }
+
+    function initUser() {
+      if (!APP.checkLogin()) {
+        if (window.location.protocol === 'file:') {
+          APP.user.isLoggedIn = true;
+          APP.user.name = '本地体验用户';
+        } else {
+          window.location.href = 'login.html';
+          return;
+        }
+      }
+      APP.loadData();
+
+      document.getElementById('user-name').textContent = APP.user.name || '用户';
+
+      if (APP.activeChallenge) {
+        const ch = APP.activeChallenge;
+        const config = APP.challenges[ch.days] || { name: ch.days + '天挑战' };
+        document.getElementById('challenge-count').textContent = '1';
+        document.getElementById('total-checkins').textContent = ch.checkedDays || 0;
+        document.getElementById('total-refund').textContent = money(APP.calculateRefund(ch));
+        document.getElementById('streak-days').textContent = ch.checkedDays || 0;
+        document.getElementById('challenge-card').style.display = 'block';
+        document.getElementById('challenge-summary').innerHTML =
+          '<div>挑战名称：' + config.name + '</div>' +
+          '<div>当前进度：第 ' + (ch.currentDay || 1) + ' / ' + ch.days + ' 天</div>' +
+          '<div>已打卡：' + (ch.checkedDays || 0) + ' 天</div>' +
+          '<div>已请假：' + (ch.leaveDays || 0) + ' 天</div>';
+      }
+    }
+
+    function logout() {
+      APP.logout();
+    }
+
+    function resetData() {
+      if (confirm('确定要清除本地挑战数据吗？此操作不会删除已上传的体态照片和后端分析记录。')) {
+        localStorage.removeItem('ai_posture_data');
+        alert('本地挑战数据已清除。');
+        window.location.reload();
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', initUser);
+  </script>
+</body>
+</html>
+
+
+
+
+

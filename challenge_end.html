@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>挑战结果</title>
+  <link rel="stylesheet" href="css/style.css?v=20260714-pose-auto-v32">
+  <style>
+    .result-hero { text-align:center; padding:28px 12px 18px; }
+    .result-icon {
+      width:76px; height:76px; border-radius:50%; display:inline-flex;
+      align-items:center; justify-content:center; background:var(--primary-light);
+      color:var(--primary); font-size:38px; font-weight:800; margin-bottom:16px;
+    }
+    .result-title { font-size:24px; font-weight:800; margin-bottom:8px; }
+    .result-subtitle { color:var(--text-secondary); line-height:1.7; font-size:14px; }
+    .refund-card { background:linear-gradient(135deg,#fef3c7,#fde68a); border:none; text-align:center; }
+    .refund-amount { font-size:46px; font-weight:800; color:#92400e; margin-bottom:4px; }
+    .summary-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:14px; text-align:center; }
+    .summary-item { background:var(--bg); border-radius:12px; padding:16px 10px; }
+    .summary-num { font-size:28px; font-weight:800; color:var(--primary); }
+    .summary-label { font-size:13px; color:var(--text-secondary); margin-top:4px; }
+  </style>
+</head>
+<body>
+  <div class="navbar">
+    <a href="user.html?v=20260714-pose-auto-v32" class="back-btn">&#8592;</a>
+    <h1>挑战结果</h1>
+    <div></div>
+  </div>
+
+  <div class="container">
+    <div class="result-hero">
+      <div class="result-icon" id="result-icon">✓</div>
+      <div class="result-title" id="result-title">挑战完成</div>
+      <div class="result-subtitle" id="result-subtitle">系统已根据你的挑战记录生成本次结果。</div>
+    </div>
+
+    <div class="card refund-card">
+      <div class="refund-amount" id="refund-amount">¥0</div>
+      <div style="color:#92400e;">预计返还保证金</div>
+    </div>
+
+    <div class="card">
+      <h3 class="card-title">挑战回顾</h3>
+      <div class="summary-grid">
+        <div class="summary-item"><div class="summary-num" id="completion-rate">0%</div><div class="summary-label">完成率</div></div>
+        <div class="summary-item"><div class="summary-num" id="checked-days">0</div><div class="summary-label">打卡天数</div></div>
+        <div class="summary-item"><div class="summary-num" id="leave-days">0</div><div class="summary-label">请假天数</div></div>
+        <div class="summary-item"><div class="summary-num" id="missed-days">0</div><div class="summary-label">缺卡天数</div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3 class="card-title">下一步建议</h3>
+      <p id="next-advice" style="font-size:14px; color:var(--text-secondary); line-height:1.8;">
+        建议继续保持每日训练，并在下一次体态评估中复查重点问题。
+      </p>
+    </div>
+
+    <div style="margin-top:20px;">
+      <a href="index.html?v=20260714-pose-auto-v32" class="btn btn-primary">返回首页</a>
+      <a href="challenge_progress.html?v=20260714-pose-auto-v32" class="btn btn-outline" style="margin-top:12px;">查看打卡记录</a>
+    </div>
+  </div>
+
+  <nav class="bottom-nav">
+    <a href="index.html?v=20260714-pose-auto-v32"><span class="icon">&#8962;</span><span>首页</span></a>
+    <a href="challenge_progress.html?v=20260714-pose-auto-v32"><span class="icon">&#10003;</span><span>打卡</span></a>
+    <a href="user.html?v=20260714-pose-auto-v32" class="active"><span class="icon">&#9679;</span><span>我的</span></a>
+  </nav>
+
+  <script src="js/app.js?v=20260714-pose-auto-v32" charset="UTF-8"></script>
+  <script>
+    function money(value) {
+      return '¥' + Number(value || 0);
+    }
+
+    function renderResult() {
+      APP.loadData();
+      const challenge = APP.activeChallenge;
+      if (!challenge) {
+        document.getElementById('result-icon').textContent = '!';
+        document.getElementById('result-title').textContent = '暂无挑战记录';
+        document.getElementById('result-subtitle').textContent = '当前没有可结算的挑战，请先从首页选择挑战。';
+        document.getElementById('next-advice').textContent = '完成体态评估后，可以选择适合自己的训练挑战。';
+        return;
+      }
+
+      const totalDays = Number(challenge.days || 0);
+      const checked = Number(challenge.checkedDays || 0);
+      const leave = Number(challenge.leaveDays || 0);
+      const missed = Number(challenge.missedDays || 0);
+      const rate = totalDays ? Math.round((checked / totalDays) * 100) : 0;
+      const refund = APP.calculateRefund(challenge);
+
+      document.getElementById('refund-amount').textContent = money(refund);
+      document.getElementById('completion-rate').textContent = rate + '%';
+      document.getElementById('checked-days').textContent = checked;
+      document.getElementById('leave-days').textContent = leave;
+      document.getElementById('missed-days').textContent = missed;
+
+      if (rate >= 100) {
+        document.getElementById('result-icon').textContent = '✓';
+        document.getElementById('result-title').textContent = '全勤完成';
+        document.getElementById('result-subtitle').textContent = '你已完成本轮挑战，训练连续性良好。';
+        document.getElementById('next-advice').textContent = '建议进入下一阶段训练，并在 7 到 14 天后重新进行体态照片采集。';
+      } else if (rate >= 60) {
+        document.getElementById('result-icon').textContent = '!';
+        document.getElementById('result-title').textContent = '挑战达标';
+        document.getElementById('result-subtitle').textContent = '大部分训练已经完成，但连续性仍有提升空间。';
+        document.getElementById('next-advice').textContent = '建议继续参加下一轮挑战，优先保证每天完成基础动作，再逐步增加训练强度。';
+      } else {
+        document.getElementById('result-icon').textContent = '-';
+        document.getElementById('result-title').textContent = '挑战未完成';
+        document.getElementById('result-subtitle').textContent = '本轮训练连续性不足，建议重新制定更容易坚持的计划。';
+        document.getElementById('next-advice').textContent = '建议从 7 天入门挑战重新开始，降低单日训练压力，先建立稳定习惯。';
+      }
+    }
+
+    renderResult();
+  </script>
+</body>
+</html>
+
+
+
+
+

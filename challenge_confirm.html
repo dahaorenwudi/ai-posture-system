@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>挑战确认</title>
+  <link rel="stylesheet" href="css/style.css?v=20260714-pose-auto-v32">
+</head>
+<body>
+  <div class="navbar">
+    <a href="index.html?v=20260714-pose-auto-v32" class="back-btn">&#8592;</a>
+    <h1>挑战确认</h1>
+    <div></div>
+  </div>
+
+  <div class="container">
+    <div class="card" style="margin-top:16px;">
+      <h2 id="challenge-name" style="font-size:22px; margin-bottom:8px;">挑战计划</h2>
+      <p style="color:var(--text-secondary); margin-bottom:16px;">
+        <span id="challenge-days">7</span>天养成计划 · 目标完成 <span id="target-days">7</span> 次有效打卡
+      </p>
+
+      <div style="background:var(--bg); border-radius:12px; padding:16px; margin-bottom:16px;">
+        <h4 style="margin-bottom:12px;">挑战规则</h4>
+        <ul style="padding-left:20px; color:var(--text-secondary); font-size:14px; line-height:2;">
+          <li>每日完成训练并打卡，截止时间为当天 23:59。</li>
+          <li>可请假 <span id="leave-count">1</span> 次，请假后挑战顺延。</li>
+          <li>全勤完成后返还全部保证金。</li>
+          <li>漏打卡会按规则扣款，首次扣款较少，之后逐次递增。</li>
+        </ul>
+      </div>
+
+      <h3 style="font-size:16px; margin-bottom:12px;">选择档位</h3>
+      <div class="plan-options" id="plan-options"></div>
+
+      <div style="background:#fef3c7; border-radius:12px; padding:16px; margin:16px 0;">
+        <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+          <span>挑战金额总计</span>
+          <strong id="total-amount">¥99</strong>
+        </div>
+        <div style="display:flex; justify-content:space-between; margin-bottom:8px; font-size:14px; color:var(--text-secondary);">
+          <span>服务费（不可退）</span>
+          <span id="service-fee">¥29</span>
+        </div>
+        <div style="display:flex; justify-content:space-between; font-size:14px; color:var(--text-secondary);">
+          <span>保证金（可按规则返还）</span>
+          <span id="deposit-amount">¥70</span>
+        </div>
+        <div style="border-top:1px dashed #ccc; margin-top:12px; padding-top:12px; display:flex; justify-content:space-between;">
+          <span>全勤返还</span>
+          <strong style="color:var(--success);" id="full-refund">¥70</strong>
+        </div>
+      </div>
+
+      <button class="btn btn-primary" id="pay-btn" onclick="startChallenge()">确认并开始挑战</button>
+      <p style="text-align:center; font-size:12px; color:var(--text-secondary); margin-top:12px;">
+        开始挑战表示同意挑战服务协议，7 日内可按规则申请退款。
+      </p>
+    </div>
+  </div>
+
+  <nav class="bottom-nav">
+    <a href="index.html?v=20260714-pose-auto-v32"><span class="icon">&#8962;</span><span>首页</span></a>
+    <a href="challenge_progress.html?v=20260714-pose-auto-v32" class="active"><span class="icon">&#10003;</span><span>打卡</span></a>
+    <a href="user.html?v=20260714-pose-auto-v32"><span class="icon">&#9679;</span><span>我的</span></a>
+  </nav>
+
+  <script src="js/app.js?v=20260714-pose-auto-v32" charset="UTF-8"></script>
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const days = parseInt(params.get('days'), 10) || 7;
+    const config = APP.challenges[days] || APP.challenges[7];
+    let selectedPlan = config.plans[1] || config.plans[0];
+
+    document.getElementById('challenge-name').textContent = config.name;
+    document.getElementById('challenge-days').textContent = config.days;
+    document.getElementById('target-days').textContent = config.days;
+    document.getElementById('leave-count').textContent = config.leaveAllowed;
+
+    function money(value) {
+      return '¥' + Number(value || 0);
+    }
+
+    function renderPlans() {
+      const container = document.getElementById('plan-options');
+      container.innerHTML = config.plans.map(function(plan) {
+        return `
+          <div class="plan-option ${plan.id === selectedPlan.id ? 'selected' : ''}" data-plan="${plan.id}" onclick="selectPlan('${plan.id}')">
+            <div>
+              <div class="name">${plan.name}</div>
+              <div class="desc">${plan.desc}</div>
+            </div>
+            <div class="amount">${money(plan.amount)}</div>
+          </div>
+        `;
+      }).join('');
+      updatePrice();
+    }
+
+    function selectPlan(planId) {
+      selectedPlan = config.plans.find(function(plan) { return plan.id === planId; }) || selectedPlan;
+      document.querySelectorAll('.plan-option').forEach(function(el) { el.classList.remove('selected'); });
+      const target = document.querySelector('[data-plan="' + planId + '"]');
+      if (target) target.classList.add('selected');
+      updatePrice();
+    }
+
+    function updatePrice() {
+      document.getElementById('total-amount').textContent = money(selectedPlan.amount);
+      document.getElementById('service-fee').textContent = money(selectedPlan.serviceFee);
+      document.getElementById('deposit-amount').textContent = money(selectedPlan.deposit);
+      document.getElementById('full-refund').textContent = money(selectedPlan.deposit);
+    }
+
+    const API_BASE = 'http://127.0.0.1:8000';
+
+    async function startChallenge() {
+      const startDate = new Date().toISOString().split('T')[0];
+      const dailyRecords = [];
+      for (let i = 0; i < config.days; i++) {
+        const d = new Date();
+        d.setDate(d.getDate() + i);
+        dailyRecords.push({
+          date: d.toISOString().split('T')[0],
+          status: i === 0 ? 'pending' : 'future',
+          dayNumber: i + 1
+        });
+      }
+
+      APP.activeChallenge = {
+        id: Date.now(),
+        days: config.days,
+        planId: selectedPlan.id,
+        totalAmount: selectedPlan.amount,
+        serviceFee: selectedPlan.serviceFee,
+        deposit: selectedPlan.deposit,
+        startDate,
+        currentDay: 1,
+        checkedDays: 0,
+        leaveDays: 0,
+        missedDays: 0,
+        deductedAmount: 0,
+        status: 'active',
+        dailyRecords,
+        baseDeduct: selectedPlan.baseDeduct
+      };
+      APP.saveData();
+
+      try {
+        await fetch(API_BASE + '/api/challenges', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            user_name: APP.user?.name || '匿名用户',
+            challenge_days: config.days,
+            plan_id: selectedPlan.id,
+            total_amount: selectedPlan.amount,
+            service_fee: selectedPlan.serviceFee,
+            deposit: selectedPlan.deposit,
+            base_deduct: selectedPlan.baseDeduct
+          })
+        });
+      } catch (err) {
+        console.warn('后端同步失败，不影响本地挑战流程:', err);
+      }
+
+      window.location.href = 'challenge_progress.html?v=20260714-pose-auto-v32';
+    }
+
+    renderPlans();
+  </script>
+</body>
+</html>
+
+
+
+
+
